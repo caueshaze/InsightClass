@@ -4,3 +4,10 @@ joblib
 fastapi
 uvicorn
 pydantic
+python-jose[cryptography]
+bcrypt
+SQLAlchemy
+pydantic-settings
+onnxruntime
+transformers
+torch

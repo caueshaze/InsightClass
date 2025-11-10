@@ -1,4 +1,5 @@
-# InsightClass — Análise de Sentimento de Feedback Escolar README NAO FINALIZADO
+
+# InsightClass — Análise de Sentimento de Feedback Escolar
 
 ![Python Version](https://img.shields.io/badge/Python-3.10%2B-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.95+-green)
@@ -7,50 +8,85 @@
 
 ## Visão Geral
 
-O **InsightClass** é uma ferramenta desenvolvida para transformar feedbacks textuais de alunos e professores em dados quantitativos e visuais.  
-Seu objetivo principal é auxiliar coordenadores e docentes a compreenderem rapidamente o sentimento geral de uma turma ou disciplina,  
-facilitando a identificação de pontos de melhoria e sucesso.
+O **InsightClass** é uma plataforma que transforma feedbacks textuais de alunos, professores e gestores em **análises de sentimento** e **resumos empáticos automáticos**, oferecendo uma visão clara e humanizada sobre o ambiente escolar.
+
+Desenvolvido com **FastAPI**, **React**, **Transformers ONNX** e o modelo **Gemma 2B IT**, o projeto combina **Machine Learning**, **Processamento de Linguagem Natural (PLN)** e **design empático** para apoiar decisões pedagógicas com base em dados reais e claro, linguagem humana.
 
 Este projeto foi concebido com foco em uma aplicação prática universitária, integrando conceitos essenciais de **Processamento de Linguagem Natural (PLN)**, **Machine Learning** e **Desenvolvimento Web**.
 
 ## Objetivos
 
-- Coletar feedback textual detalhado sobre aulas, disciplinas e corpo docente.
-- Classificar os feedbacks em categorias de sentimento: positivo, neutro ou negativo.
-- Visualizar métricas e tendências de sentimento através de um dashboard interativo.
+-   Classificar automaticamente feedbacks como **positivos**, **neutros** ou **negativos**.
+    
+-   Gerar **resumos personalizados** (via LLM) para alunos, professores e gestores.
+    
+-   Fornecer uma **visualização interativa** dos sentimentos e tendências no dashboard React.
+    
+-   Reduzir o tempo de análise de relatórios manuais e tornar o acompanhamento educacional mais humano e rápido.
 
-## Tecnologias Utilizadas
 
-### Backend
-- **Python 3.10+** — Linguagem de programação principal.
-- **FastAPI** — Framework para construção de APIs eficientes e robustas.
-- **scikit-learn** — Biblioteca para modelagem e treinamento do classificador de sentimento.
-- **pandas** — Manipulação e análise de dados.
-- **joblib** — Salvamento e carregamento otimizado de modelos treinados.
+##  Tecnologias Utilizadas
 
-### Frontend
-- **React + Vite** — Biblioteca e ferramenta de build para construção da interface de usuário.
-- **TailwindCSS** — Framework CSS para estilização rápida e responsiva.
-- **Integração com API** — Comunicação com o backend via `fetch`.
+###  Backend (API)
 
-### Infraestrutura
-- **GitHub** — Controle de versão e colaboração.
-- **Azure for Students** — (Opcional) Ambiente potencial para deploy futuro.
-- **(Futuro)** PostgreSQL / Google Sheets — Armazenamento persistente de dados.
+-   **Python 3.12+**
+    
+-   **FastAPI** — Estrutura assíncrona de alta performance.
+    
+-   **ONNXRuntime** — Execução do modelo BERT para classificação local.
+    
+-   **Transformers (Hugging Face)** — Tokenização e compatibilidade com modelos.
+    
+-   **Gemma 2B IT (Google)** — Geração de resumos empáticos.
+    
+-   **SQLite / SQLAlchemy** — Banco de dados leve e integrado.
+    
+-   **Pydantic v2 + pydantic-settings** — Validação e configuração baseada em `.env`.
+    
+
+### Frontend (Interface)
+
+-   **React 18 + Vite** — Interface modular e reativa.
+    
+-   **TailwindCSS** — Estilização limpa e responsiva.
+    
+-   **Shadcn/UI + Lucide Icons** — Componentes e ícones modernos.
+    
+-   **Axios / Fetch API** — Comunicação com o backend.
+    
+
+### Infraestrutura e Dev
+
+-   **Uvicorn** — Servidor ASGI de desenvolvimento.
+    
+-   **GitHub + GitIgnore otimizado** — Controle de versão seguro.
+    
+-   **Virtual Env + npm** — Isolamento total entre ambientes.
 
 ## Estrutura do Projeto
 
 ```
 InsightClass/
-├── data/                # Conjunto de dados (anonimizados)
-├── models/              # Modelos treinados (.joblib) — ignorados no Git
-├── src/
-│   ├── train.py         # Script de treinamento do modelo
-│   ├── utils_text.py    # Funções auxiliares de texto
-│   └── api/
-│       └── serve.py     # API FastAPI
-├── frontend/            # Aplicação React/Tailwind (dashboard)
-├── requirements.txt     # Dependências do backend
+├── backend/
+│   ├── app/
+│   │   ├── api/                 # Rotas FastAPI (auth, feedback, resumo, admin)
+│   │   ├── core/                # Config, LLM, Sentiment Analyzer
+│   │   ├── models/              # ORM + Esquemas Pydantic
+│   │   └── main.py              # Factory da aplicação FastAPI
+│   └── requirements.txt
+│
+├── models/
+│   ├── bert/                    # Modelo de sentimento (ONNX + tokenizer)
+│   └── gemma/                   # Modelo de resumo empático (LLM)
+│
+├── frontend/
+│   ├── src/
+│   │   ├── pages/               # Páginas (Gestor, Professor, Aluno)
+│   │   ├── components/          # Componentes reutilizáveis (modulares)
+│   │   └── hooks/               # Hooks de API e estado
+│   └── package.json
+│
+├── .env.example
 ├── .gitignore
 └── README.md
 ```
@@ -74,9 +110,26 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 3. Treinar o modelo
+### 3. Baixar os modelos
+
+#### Modelo utilizado
+
+O modelo de classificação inicial é baseado no [**bertimbau-onnx-pipeline**](https://github.com/caueshaze/bertimbau-onnx-pipeline) um projeto complementar desenvolvido por mim para:
+-   Treinar o modelo BERTimbau em datasets rotulados de feedback educacional.
+    
+-   Exportar o modelo para **ONNX Runtime**, otimizando inferência em CPU.
+    
+-   Gerar os artefatos (`model.onnx` e `tokenizer/`) consumidos pelo InsightClass.
+    
+> O repositório de treinamento inclui scripts de conversão, avaliação e validação cruzada — além de suporte a exportação com `onnxruntime-tools`
+
+Já o modelo de sumário pode ser encontrado em https://huggingface.co/google/gemma-2b-it
+
 ```bash
-python src/train.py --csv data/rotulados_ensino_medio_plus.csv --out models/sentiment.joblib
+Coloque seus modelos na pasta `models/`
+models/bert/model.onnx
+models/bert/tokenizer/
+models/gemma-2b-it
 ```
 
 ### 4. Rodar a API
@@ -93,18 +146,46 @@ npm run dev
 ```
 O site estará disponível em: [http://localhost:5173/](http://localhost:5173/)
 
-## Fluxo do Sistema
-1. **Coleta de Feedback** — Usuários preenchem o formulário no frontend.
-2. **Processamento** — API processa o texto com o modelo treinado e retorna a classificação.
-3. **Visualização** — Dashboard exibe gráficos e métricas agregadas.
+## Pipeline Inteligente
 
-## Próximos Passos
-- Implementar banco de dados (PostgreSQL).
-- Criar dashboard mais robusto e interativo.
-- Adicionar autenticação e autorização.
-- Deploy do backend e frontend na nuvem.
+### Etapa 1 — Classificação (BERT ONNX)
 
-## Avisos Importantes
-- **Anonimização de Dados** — Proteção da privacidade.
-- **Compartilhamento de Modelos** — Evitar vazamento de informações sensíveis.
-- **Uso Educacional** — Não recomendado para produção sem ajustes.
+Cada feedback é tokenizado e passado por um modelo ONNX compatível com BERT, retornando:
+
+-   **positivo**
+    
+-   **neutro**
+    
+-   **negativo**
+    
+
+Se o modelo não estiver disponível, o sistema recorre a uma heurística linguística leve.
+
+###  Etapa 2 — Síntese Empática (LLM Gemma 2B IT)
+
+Com base nos feedbacks e no papel (aluno, professor, gestor), o modelo gera uma **mensagem personalizada e humana**, simulando uma mentora chamada _Maya_:
+
+> “Olá Jorge, aprender é um processo que exige esforço e dedicação...”
+
+O texto é pós-processado para remover termos proibidos e manter o tom acolhedor e natural.
+
+##  Painel do Gestor
+
+A página do gestor (em React) exibe:
+
+-   Indicadores agregados de sentimento.
+    
+-   Últimos feedbacks de cada turma.
+    
+-   Mensagens geradas pelo LLM.
+    
+-   Filtros por escola, disciplina e período.
+
+##
+## ⚠️ Avisos
+
+-   **Privacidade:** dados e feedbacks devem ser anonimizados.
+    
+-   **Modelos:** não envie arquivos `.onnx`, `.bin` ou `.pt` ao GitHub (veja `.gitignore`).
+    
+-   **Uso Educacional:** protótipo acadêmico, não pronto para produção.

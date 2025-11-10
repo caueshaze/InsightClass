@@ -1,27 +1,69 @@
 // src/components/Protected.tsx
-import { Navigate } from 'react-router-dom';
-import { useAuth, Role } from '../context/AuthContext'; // Certifique-se que Role é importado
+import { ReactNode, useEffect, useMemo } from 'react'
+import { Navigate, useLocation } from 'react-router-dom'
 
-export function Protected({
-  children,
-  allow,
-}: {
-  children: React.ReactNode;
-  allow: Role[];
-}) {
-  const { session } = useAuth();
+import { useAuth, Role } from '../context/AuthContext'
+import { getToken } from '../lib/auth'
 
-  // Verifica se a sessão existe E se as propriedades essenciais (username e role) existem nela.
-  // Se qualquer uma delas não existir ou for indefinida, redireciona para o login.
-  if (!session || !session.username || !session.role) {
-    return <Navigate to="/login" replace />;
+type BackendRole = 'admin' | 'gestor' | 'professor' | 'aluno'
+type AllowedRole = Role | BackendRole
+
+const backendToFront: Record<BackendRole, Role> = {
+  admin: 'gestor',
+  gestor: 'gestor',
+  professor: 'professor',
+  aluno: 'aluno',
+}
+
+type ProtectedProps = {
+  children: ReactNode
+  roles?: AllowedRole[]
+  allow?: Role[] // compatibilidade com uso anterior
+}
+
+export function Protected({ children, roles, allow }: ProtectedProps) {
+  const { session, loading, refresh } = useAuth()
+  const location = useLocation()
+  const token = getToken()
+
+  const normalizedRoles = useMemo(() => {
+    const source = roles ?? allow ?? []
+    return source
+      .map((role) => {
+        if (!role) return null
+        if (role in backendToFront) {
+          return backendToFront[role as BackendRole]
+        }
+        return role as Role
+      })
+      .filter((item): item is Role => Boolean(item))
+  }, [roles, allow])
+
+  useEffect(() => {
+    if (token && !session && !loading) {
+      void refresh()
+    }
+  }, [token, session, loading, refresh])
+
+  if (!token) {
+    return <Navigate to="/login" state={{ from: location }} replace />
   }
 
-  // Agora, o TypeScript sabe que 'session.role' definitivamente é do tipo 'Role' (e não 'undefined').
-  // Então, podemos usá-lo com segurança na função 'includes'.
-  if (!allow.includes(session.role)) {
-    return <Navigate to="/login" replace />;
+  if (loading && !session) {
+    return (
+      <div className="min-h-screen grid place-items-center text-slate-500 text-sm">
+        Validando sessão...
+      </div>
+    )
   }
 
-  return <>{children}</>;
+  if (!session) {
+    return <Navigate to="/login" state={{ from: location }} replace />
+  }
+
+  if (normalizedRoles.length > 0 && !normalizedRoles.includes(session.role)) {
+    return <Navigate to="/login" replace />
+  }
+
+  return <>{children}</>
 }

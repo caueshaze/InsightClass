@@ -1,226 +1,285 @@
-// src/pages/Gestor.tsx
-import { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
-import Header from '../components/Header';
-import { SubjectsPanel } from '../components/gestor/SubjectsPanel';
-import { TeachersPanel } from '../components/gestor/TeachersPanel';
-import { StudentsPanel } from '../components/gestor/StudentsPanel';
-import { listFeedbacks, listStudents, listTeachers, listSubjects } from '../lib/mockStore';
-import type { Feedback, AppRole, TargetType, Student, Teacher, Subject, FeedbackLabel } from '../lib/types';
+import { useEffect, useMemo, useState } from 'react'
 
-// Componente auxiliar para exibir um feedback (pode ser o mesmo do Aluno.tsx/Professor.tsx)
-function FeedbackCard({ feedback }: { feedback: Feedback }) {
-  const getLabelColor = (label?: FeedbackLabel) => {
-    switch (label) {
-      case 'positivo': return 'text-green-700 bg-green-50';
-      case 'neutro': return 'text-yellow-700 bg-yellow-50';
-      case 'negativo': return 'text-red-700 bg-red-50';
-      default: return 'text-slate-700 bg-slate-50';
+import Header from '../components/Header'
+import { useAuth } from '../context/AuthContext'
+import { useGestorOverview } from '../hooks/useGestorOverview'
+import {
+  useGestorDirectory,
+  type ClassroomFormState,
+  type SubjectFormState,
+  type UserFormState,
+} from '../hooks/useGestorDirectory'
+import { PersonalHero } from '../components/personal/PersonalHero'
+import { GestorWelcome } from '../components/gestor/GestorWelcome'
+import { GestorOverviewSection } from '../components/gestor/GestorOverviewSection'
+import { FeedbackComposer } from '../components/feedback/FeedbackComposer'
+import { InsightSummaryCard } from '../components/gestor/InsightSummaryCard'
+import { RecentFeedbackTable } from '../components/gestor/RecentFeedbackTable'
+import { UserRegistrationCard } from '../components/gestor/UserRegistrationCard'
+import { UsersTableCard } from '../components/gestor/UsersTableCard'
+import { SchoolsCatalogCard } from '../components/gestor/SchoolsCatalogCard'
+import { SubjectsCatalogCard } from '../components/gestor/SubjectsCatalogCard'
+import { ClassroomsCatalogCard } from '../components/gestor/ClassroomsCatalogCard'
+import { deleteFeedback } from '../lib/api'
+
+type ManagementSection =
+  | 'welcome'
+  | 'overview'
+  | 'compose'
+  | 'insights'
+  | 'feedbacks'
+  | 'directory'
+  | 'schools'
+  | 'subjects'
+  | 'classrooms'
+
+const BASE_SECTIONS: Array<{ id: ManagementSection; label: string; icon: string }> = [
+  { id: 'welcome', label: 'Início', icon: '👋' },
+  { id: 'overview', label: 'Indicadores', icon: '📊' },
+  { id: 'compose', label: 'Enviar comunicado', icon: '✉️' },
+  { id: 'insights', label: 'Análise IA', icon: '✨' },
+  { id: 'feedbacks', label: 'Todos os feedbacks', icon: '📋' },
+  { id: 'directory', label: 'Usuários', icon: '🧑‍🤝‍🧑' },
+  { id: 'schools', label: 'Unidades', icon: '🏫' },
+  { id: 'subjects', label: 'Matérias', icon: '📚' },
+  { id: 'classrooms', label: 'Turmas', icon: '🧾' },
+]
+
+export default function Gestor() {
+  const { session, logout } = useAuth()
+  const backendRole = session?.backendRole ?? null
+  const managerSchoolId = session?.schoolId ?? null
+  const isAdmin = backendRole === 'admin'
+  const isManager = backendRole === 'gestor'
+
+  const sections = useMemo(() => {
+    if (isAdmin) return BASE_SECTIONS
+    return BASE_SECTIONS.filter((section) => section.id !== 'schools')
+  }, [isAdmin])
+
+  const [activeSection, setActiveSection] = useState<ManagementSection>('welcome')
+  const [directoryInitialized, setDirectoryInitialized] = useState(false)
+  const [feedbackActionStatus, setFeedbackActionStatus] = useState<string | null>(null)
+
+  const overview = useGestorOverview({ isAdmin, managerSchoolId })
+  const directory = useGestorDirectory({ isAdmin, isManager, managerSchoolId })
+
+  const {
+    feedbacks,
+    feedbacksLoading,
+    feedbacksNotice,
+    summary,
+    summaryLoading,
+    summaryStatus,
+    feedbackPurgeStatus,
+    feedbackPurgeLoading,
+    stats,
+    loadFeedbacks,
+    loadSummary,
+    handleDeleteAllFeedbacks,
+  } = overview
+
+  const {
+    initializeDirectory,
+    usersState,
+    schoolsState,
+    subjectsState,
+    classroomsState,
+    referenceData,
+  } = directory
+
+  useEffect(() => {
+    void loadFeedbacks()
+  }, [loadFeedbacks])
+
+  useEffect(() => {
+    const needsDirectory = ['directory', 'schools', 'subjects', 'classrooms'].includes(activeSection)
+    if (needsDirectory && !directoryInitialized) {
+      setDirectoryInitialized(true)
+      void initializeDirectory()
     }
-  };
+  }, [activeSection, directoryInitialized, initializeDirectory])
 
-  const getTargetText = (f: Feedback) => {
-    switch (f.target_type) {
-      case 'professor': return `Para Professor: ${f.target_name || 'Desconhecido'}`;
-      case 'aluno': return `Para Aluno: ${f.target_name || 'Desconhecido'}`;
-      case 'turma': return `Para Turma: ${f.target_name || 'Desconhecido'}`;
-      case 'materia': return `Para Matéria: ${f.target_name || 'Desconhecido'}`;
-      case 'coordenacao': return 'Para Coordenação';
-      default: return '';
+  const renderSection = () => {
+    switch (activeSection) {
+      case 'welcome':
+        return (
+          <GestorWelcome
+            roleLabel={isAdmin ? 'Administrador' : 'Gestor(a)'}
+            onNavigate={setActiveSection}
+            actions={[
+              { id: 'overview', icon: '📊', title: 'Acompanhar indicadores', description: 'Veja como está o clima da rede e os gatilhos monitorados.' },
+              { id: 'directory', icon: '🧑‍🤝‍🧑', title: 'Gerir diretório', description: 'Cadastre novos usuários ou ajuste vínculos existentes.' },
+            ]}
+          />
+        )
+      case 'overview':
+        return (
+          <GestorOverviewSection
+            stats={stats}
+            loading={feedbacksLoading}
+            notice={feedbacksNotice}
+            onRefresh={loadFeedbacks}
+          />
+        )
+      case 'compose':
+        return (
+          <section className="card p-6 space-y-4">
+            <FeedbackComposer
+              title="Enviar comunicado"
+              helperText="Dispare orientações rápidas para qualquer perfil permitido."
+              onSuccess={loadFeedbacks}
+            />
+          </section>
+        )
+      case 'insights':
+        return (
+          <InsightSummaryCard
+            summary={summary}
+            summaryLoading={summaryLoading}
+            summaryStatus={summaryStatus}
+            onGenerate={loadSummary}
+          />
+        )
+      case 'feedbacks':
+        return (
+          <RecentFeedbackTable
+            feedbacks={feedbacks}
+            loading={feedbacksLoading}
+            message={feedbacksNotice}
+            onRefresh={loadFeedbacks}
+            canPurge={isAdmin}
+            onDeleteAll={isAdmin ? handleDeleteAllFeedbacks : undefined}
+            purgeStatus={feedbackPurgeStatus}
+            purgeLoading={feedbackPurgeLoading}
+            onDeleteFeedback={handleDeleteSingleFeedback}
+            statusMessage={feedbackActionStatus}
+          />
+        )
+      case 'directory':
+        return (
+          <section className="grid gap-6">
+            <UserRegistrationCard
+              form={usersState.userForm}
+              onChange={(updates) => usersState.setUserForm((prev: UserFormState) => ({ ...prev, ...updates }))}
+              onSubmit={usersState.handleUserSubmit}
+              submitting={usersState.userFormSubmitting}
+              statusMessage={usersState.userFormStatus}
+              isAdmin={isAdmin}
+              isManager={isManager}
+              visibleSchools={referenceData.visibleSchools}
+              subjects={subjectsState.subjects}
+              classrooms={classroomsState.classrooms}
+              mode={usersState.userFormMode}
+              onCancelEdit={usersState.resetUserForm}
+            />
+            <UsersTableCard
+              users={usersState.filteredUsers}
+              loading={usersState.usersLoading}
+              error={usersState.usersError}
+              roleFilter={usersState.roleFilter}
+              onChangeRoleFilter={usersState.setRoleFilter}
+              onDeleteUser={usersState.handleDeleteUser}
+              onEditUser={usersState.startEditUser}
+              userActionStatus={usersState.userActionStatus}
+              sessionUserId={session?.id}
+              schoolMap={referenceData.schoolMap}
+              subjectMap={referenceData.subjectMap}
+              classroomMap={referenceData.classroomMap}
+            />
+          </section>
+        )
+      case 'schools':
+        return (
+          <SchoolsCatalogCard
+            schools={schoolsState.schools}
+            loading={schoolsState.schoolsLoading}
+            error={schoolsState.schoolsError}
+            form={schoolsState.schoolForm}
+            onChange={(updates) => schoolsState.setSchoolForm((prev) => ({ ...prev, ...updates }))}
+            formMode={schoolsState.schoolFormMode}
+            submitting={schoolsState.schoolFormSubmitting}
+            statusMessage={schoolsState.schoolFormStatus}
+            onSubmit={schoolsState.handleSchoolSubmit}
+            onEdit={schoolsState.startEditSchool}
+            onDelete={schoolsState.handleDeleteSchool}
+            onReset={schoolsState.resetSchoolForm}
+          />
+        )
+      case 'subjects':
+        return (
+          <SubjectsCatalogCard
+            subjects={subjectsState.subjects}
+            loading={subjectsState.subjectsLoading}
+            error={subjectsState.subjectsError}
+            form={subjectsState.subjectForm}
+            onChange={(updates) => subjectsState.setSubjectForm((prev: SubjectFormState) => ({ ...prev, ...updates }))}
+            formMode={subjectsState.subjectFormMode}
+            submitting={subjectsState.subjectFormSubmitting}
+            statusMessage={subjectsState.subjectFormStatus}
+            onSubmit={subjectsState.handleSubjectSubmit}
+            onEdit={subjectsState.startEditSubject}
+            onDelete={subjectsState.handleDeleteSubject}
+            onReset={subjectsState.resetSubjectForm}
+            visibleSchools={referenceData.visibleSchools}
+            schoolMap={referenceData.schoolMap}
+            teacherOptions={subjectsState.teachersForSelectedSchool}
+            teacherDirectory={referenceData.availableTeachers}
+          />
+        )
+      case 'classrooms':
+        return (
+          <ClassroomsCatalogCard
+            classrooms={classroomsState.classrooms}
+            loading={classroomsState.classroomsLoading}
+            error={classroomsState.classroomsError}
+            form={classroomsState.classroomForm}
+            onChange={(updates) => classroomsState.setClassroomForm((prev: ClassroomFormState) => ({ ...prev, ...updates }))}
+            formMode={classroomsState.classroomFormMode}
+            submitting={classroomsState.classroomFormSubmitting}
+            statusMessage={classroomsState.classroomFormStatus}
+            onSubmit={classroomsState.handleClassroomSubmit}
+            onEdit={classroomsState.startEditClassroom}
+            onDelete={classroomsState.handleDeleteClassroom}
+            onReset={classroomsState.resetClassroomForm}
+            visibleSchools={referenceData.visibleSchools}
+            subjects={referenceData.subjectsBySchool}
+            subjectMap={referenceData.subjectMap}
+            schoolMap={referenceData.schoolMap}
+          />
+        )
+      default:
+        return null
     }
   }
 
   return (
-    <div className={`p-4 border rounded-lg shadow-sm ${getLabelColor(feedback.label)}`}>
-      <div className="flex justify-between items-center mb-2">
-        <span className="font-semibold text-slate-800">
-          {feedback.is_anonymous
-            ? 'Anônimo'
-            : `De ${feedback.author_name || feedback.author_role === 'aluno' ? 'Aluno' : feedback.author_role === 'professor' ? 'Professor' : 'Gestor'}`
-          }
-        </span>
-        <span className="text-xs text-slate-500">
-          {new Date(feedback.submitted_at).toLocaleDateString()}
-        </span>
-      </div>
-      <p className="text-slate-800 text-sm mb-2">{feedback.text}</p>
-      <div className="text-xs text-slate-600 italic">
-        {getTargetText(feedback)}
-      </div>
-    </div>
-  );
-}
-
-
-export default function Gestor() {
-  const { logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<'materias' | 'professores' | 'alunos' | 'feedbacks'>('materias');
-
-  // Estados para feedbacks do gestor
-  const [allFeedbacks, setAllFeedbacks] = useState<Feedback[]>([]);
-  const [filterAuthorRole, setFilterAuthorRole] = useState<AppRole | ''>('');
-  const [filterTargetType, setFilterTargetType] = useState<TargetType | ''>('');
-  const [filterTargetId, setFilterTargetId] = useState<string>('');
-
-  // Para preencher os selects de filtro
-  const [allStudents, setAllStudents] = useState<Student[]>([]);
-  const [allTeachers, setAllTeachers] = useState<Teacher[]>([]);
-  const [allSubjects, setAllSubjects] = useState<Subject[]>([]);
-  const [allClassCodes, setAllClassCodes] = useState<string[]>([]);
-
-
-  useEffect(() => {
-    async function loadFeedbacksAndFilterOptions() {
-      try {
-        const students = await listStudents();
-        const teachers = await listTeachers();
-        const subjects = await listSubjects();
-
-        setAllStudents(students);
-        setAllTeachers(teachers);
-        setAllSubjects(subjects);
-        setAllClassCodes(Array.from(new Set(students.map(s => s.classCode)))); // Turmas únicas
-
-        // Carrega feedbacks com base nos filtros
-        const params: any = {};
-        if (filterAuthorRole) params.author_role = filterAuthorRole;
-        if (filterTargetType) params.target_type = filterTargetType;
-
-        if (filterTargetId) {
-            params.target_id = filterTargetId;
-        }
-
-        const feedbacks = await listFeedbacks(params);
-        setAllFeedbacks(feedbacks);
-
-      } catch (error) {
-        console.error("Erro ao carregar feedbacks ou opções de filtro:", error);
-      }
-    }
-
-    if (activeTab === 'feedbacks') {
-      loadFeedbacksAndFilterOptions();
-    }
-  }, [activeTab, filterAuthorRole, filterTargetType, filterTargetId]);
-
-
-  // Função para mapear o target_id para o nome do alvo (para filtros)
-  const getTargetOptions = () => {
-    switch (filterTargetType) {
-      case 'aluno': return allStudents.map(s => ({ id: s.id, name: `${s.name} (${s.classCode})` }));
-      case 'professor': return allTeachers.map(t => ({ id: t.id, name: t.name }));
-      case 'materia': return allSubjects.map(s => ({ id: s.code, name: `${s.name} (${s.code})` }));
-      case 'turma': return allClassCodes.map(code => ({ id: code, name: code }));
-      default: return [];
-    }
-  };
-
-
-  return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       <Header current="gestor" onLogout={logout} />
-      <main className="max-w-5xl mx-auto px-4 py-8 grid gap-6">
-        <div className="bg-white/80 backdrop-blur border border-slate-200 rounded-2xl shadow p-6 flex justify-between items-center">
-          <h2 className="text-xl font-semibold text-slate-900">Painel do Gestor</h2>
-          <nav className="flex gap-1">
-            <button
-              className={`px-3 py-2 rounded-xl text-sm font-medium ${activeTab === 'materias' ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-100'}`}
-              onClick={() => setActiveTab('materias')}
-            >
-              Matérias
-            </button>
-            <button
-              className={`px-3 py-2 rounded-xl text-sm font-medium ${activeTab === 'professores' ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-100'}`}
-              onClick={() => setActiveTab('professores')}
-            >
-              Professores
-            </button>
-            <button
-              className={`px-3 py-2 rounded-xl text-sm font-medium ${activeTab === 'alunos' ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-100'}`}
-              onClick={() => setActiveTab('alunos')}
-            >
-              Alunos
-            </button>
-            <button
-              className={`px-3 py-2 rounded-xl text-sm font-medium ${activeTab === 'feedbacks' ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-100'}`}
-              onClick={() => setActiveTab('feedbacks')}
-            >
-              Feedbacks
-            </button>
-          </nav>
-        </div>
-
-        {activeTab === 'materias' && <SubjectsPanel />}
-        {activeTab === 'professores' && <TeachersPanel />}
-        {activeTab === 'alunos' && <StudentsPanel />}
-
-        {activeTab === 'feedbacks' && (
-          <div className="card p-6">
-            <h3 className="text-lg font-semibold mb-3">Visualizar Feedbacks</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-              <div>
-                <label className="label">Filtrar por Autor:</label>
-                <select
-                  className="input"
-                  value={filterAuthorRole}
-                  onChange={e => {
-                    setFilterAuthorRole(e.target.value as AppRole | '');
-                    setFilterTargetId(''); // Limpa alvo ao mudar tipo de autor
-                  }}
-                >
-                  <option value="">Todos</option>
-                  <option value="aluno">Aluno</option>
-                  <option value="professor">Professor</option>
-                  <option value="gestor">Gestor</option>
-                </select>
-              </div>
-              <div>
-                <label className="label">Filtrar por Tipo de Alvo:</label>
-                <select
-                  className="input"
-                  value={filterTargetType}
-                  onChange={e => {
-                    setFilterTargetType(e.target.value as TargetType | '');
-                    setFilterTargetId(''); // Limpa alvo ao mudar tipo de alvo
-                  }}
-                >
-                  <option value="">Todos</option>
-                  <option value="professor">Professor</option>
-                  <option value="aluno">Aluno</option>
-                  <option value="turma">Turma</option>
-                  <option value="materia">Matéria</option>
-                  <option value="coordenacao">Coordenação</option>
-                </select>
-              </div>
-              {filterTargetType && filterTargetType !== 'coordenacao' && (
-                <div>
-                  <label className="label">Filtrar por Alvo Específico:</label>
-                  <select
-                    className="input"
-                    value={filterTargetId}
-                    onChange={e => setFilterTargetId(e.target.value)}
-                  >
-                    <option value="">Todos</option>
-                    {getTargetOptions().map(opt => (
-                      <option key={opt.id} value={opt.id}>{opt.name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
-
-            {allFeedbacks.length === 0 ? (
-              <p className="text-sm text-slate-600 mt-4">Nenhum feedback encontrado com os filtros aplicados.</p>
-            ) : (
-              <div className="grid gap-4 mt-4">
-                {allFeedbacks.map(f => (
-                  <FeedbackCard key={f.id} feedback={f} />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+      <main className="max-w-6xl mx-auto px-4 py-8 grid gap-6">
+        <PersonalHero
+          name={session?.fullName ?? (isAdmin ? 'Administrador' : 'Gestor(a)')}
+          roleLabel={isAdmin ? 'Administrador' : 'Gestor(a)'}
+          sections={sections}
+          activeSection={activeSection}
+          onChange={setActiveSection}
+          onRefresh={loadFeedbacks}
+          refreshLoading={feedbacksLoading}
+          refreshLabel="Sincronizar dados"
+        />
+        {renderSection()}
       </main>
     </div>
-  );
+  )
 }
+  const handleDeleteSingleFeedback = async (feedbackId: number) => {
+    if (!window.confirm('Deseja remover este feedback?')) return
+    setFeedbackActionStatus('Removendo feedback...')
+    try {
+      await deleteFeedback(feedbackId)
+      setFeedbackActionStatus('Feedback removido com sucesso.')
+      await loadFeedbacks()
+    } catch (error: any) {
+      setFeedbackActionStatus(error?.message || 'Não foi possível remover o feedback.')
+    }
+  }

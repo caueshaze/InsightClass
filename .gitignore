@@ -1,47 +1,90 @@
-# --- Global OS junk ---
+# === SISTEMA OPERACIONAL ===
 .DS_Store
 Thumbs.db
 ehthumbs.db
 Icon?
+__MACOSX/
 
-# --- Editor/IDE ---
+# === EDITOR / IDE ===
 .vscode/
 .history/
+.idea/
+*.swp
+*.swo
 
-# --- Python backend ---
+# === PYTHON BACKEND ===
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.log
 *.db
 *.sqlite
 *.sqlite3
-*.log
 
 # Virtual envs
 .venv/
 venv/
 env/
+ENV/
+.envrc
 
-# Model artifacts (mantém a pasta, ignora arquivos)
-models/*.joblib
-models/*.pkl
-models/*.h5
-models/*.bin
-models/*.pt
-models/*.onnx
+# === MODELOS E ARTEFATOS ===
+# Mantém a pasta /models, mas ignora pesos e checkpoints
+models/**/*.onnx
+models/**/*.bin
+models/**/*.pt
+models/**/*.h5
+models/**/*.pkl
+models/**/*.joblib
+models/**/*.safetensors
+models/**/*.json
+models/**/*.txt
+models/**/*.model
+models/*-it/
+!models/.keep 
+models/bert
 
-# --- Node/Frontend (React + Vite + Tailwind) ---
+# === DADOS LOCAIS ===
+data/
+datasets/
+notebooks/
+tmp/
+logs/
+uploads/
+.pytest_cache/
+
+# === FRONTEND (React / Vite / Tailwind) ===
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
 frontend/.cache/
 frontend/.parcel-cache/
 frontend/.next/
+frontend/build/
 
-Lockfiles (descomente se NÃO quiser versionar)
-
-frontend/.env
-frontend/.env.*.local
+# === ARQUIVOS DE CONFIG LOCAL ===
 .env
-.env.*.local
+.env.*
+frontend/.env
+frontend/.env.*
+.env.local
+.env.development.local
+.env.production.local
+.env.test.local
+AGENTS.md
+
+# === LOCKFILES (opcional) ===
+# descomente se quiser evitar travar dependências
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+# poetry.lock
+# Pipfile.lock
+
+# === OUTROS ===
+# Arquivos temporários de sistema ou backup
+*.bak
+*.tmp
+*.old
+*.orig

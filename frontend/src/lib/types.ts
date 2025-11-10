@@ -1,46 +1,115 @@
 // src/lib/types.ts
 
-export type AppRole = 'aluno' | 'professor' | 'gestor';
+export type BackendRole = 'admin' | 'gestor' | 'professor' | 'aluno'
+
+export type FeedbackTargetType = 'user' | 'class' | 'subject'
+export type AdminRole = BackendRole
+
+export type FeedbackPublic = {
+  id: number
+  sender_id: string
+  sender_name?: string | null
+  target_type: FeedbackTargetType
+  target_id: string
+  target_name?: string | null
+  content: string
+  sentiment: string | null
+  category: string | null
+  sentiment_label: string | null
+  sentiment_score: number | null
+  has_trigger: boolean
+  created_at: string
+}
+
+export type FeedbackMineResponse = {
+  sent: FeedbackPublic[]
+  received: FeedbackPublic[]
+}
+
+export type FeedbackCreateInput = {
+  target_type: FeedbackTargetType
+  target_id: string
+  content: string
+}
+
+export type DirectoryUser = {
+  id: string
+  email: string
+  full_name: string
+  role: AdminRole
+  school_id?: number | null
+  classroom_id?: number | null
+  subject_id?: number | null
+  teaching_classroom_ids?: number[]
+}
+
+export type AdminUserCreateInput = {
+  full_name: string
+  email: string
+  password: string
+  role: AdminRole
+  school_id?: number | null
+  classroom_id?: number | null
+  subject_id?: number | null
+  classroom_ids?: number[]
+}
+
+export type AdminUserUpdateInput = {
+  full_name?: string
+  email?: string
+  password?: string
+  role?: AdminRole
+  school_id?: number | null
+  classroom_id?: number | null
+  subject_id?: number | null
+  classroom_ids?: number[]
+}
+
+export type School = {
+  id: number
+  name: string
+  code?: string | null
+}
+
+export type SchoolCreateInput = {
+  name: string
+  code?: string | null
+}
 
 export type Subject = {
-  code: string;
-  name: string;
-};
+  id: number
+  name: string
+  code?: string | null
+  school_id: number
+  teacher_id?: string | null
+}
 
-export type Teacher = {
-  id: string;
-  name: string;
-  email: string;
-  subjectCodes: string[];
-};
+export type SubjectCreateInput = {
+  name: string
+  code?: string | null
+  school_id: number
+  teacher_id?: string | null
+}
 
-export type Student = {
-  id: string;
-  name: string;
-  email: string;
-  classCode: string;
-};
+export type Classroom = {
+  id: number
+  name: string
+  code?: string | null
+  school_id: number
+  subject_id: number | null
+  subject_ids: number[]
+}
 
-export type UserCredential = {
-  username: string;
-  password: string;
-  role: AppRole;
-};
+export type ClassroomCreateInput = {
+  name: string
+  code?: string | null
+  school_id: number
+  subject_ids: number[]
+}
 
-// --- Tipos para Feedback ---
-export type TargetType = 'professor' | 'aluno' | 'turma' | 'materia' | 'coordenacao';
-export type FeedbackLabel = 'positivo' | 'neutro' | 'negativo';
-
-export type Feedback = {
-  id: string;
-  author_id: string;
-  author_role: AppRole;
-  author_name?: string; // Adicionado: Nome do autor (opcional, só se não for anônimo)
-  text: string;
-  target_type: TargetType;
-  target_id?: string;
-  target_name?: string;
-  is_anonymous: boolean;
-  label?: FeedbackLabel;
-  submitted_at: string; // Data e hora do envio (ISO string)
-};
+export type FeedbackSummary = {
+  summary_text: string
+  positives: string[]
+  opportunities: string[]
+  gemma_ready: boolean
+}

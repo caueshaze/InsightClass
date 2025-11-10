@@ -6,18 +6,23 @@ import Login from './pages/Login'
 import Aluno from './pages/Aluno'
 import Professor from './pages/Professor'
 import Gestor from './pages/Gestor'
+import LandingPage from './pages/LandingPage'
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
+import TermsOfUsePage from './pages/TermsOfUsePage'
 
 export default function App() {
   return (
     <AuthProvider>
       <Routes>
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/privacy" element={<PrivacyPolicyPage />} />
+        <Route path="/terms" element={<TermsOfUsePage />} />
 
         <Route
           path="/aluno"
           element={
-            <Protected allow={['aluno']}>
+            <Protected roles={['aluno']}>
               <Aluno />
             </Protected>
           }
@@ -25,7 +30,7 @@ export default function App() {
         <Route
           path="/professor"
           element={
-            <Protected allow={['professor']}>
+            <Protected roles={['professor']}>
               <Professor />
             </Protected>
           }
@@ -33,13 +38,13 @@ export default function App() {
         <Route
           path="/gestor"
           element={
-            <Protected allow={['gestor']}>
+            <Protected roles={['gestor']}>
               <Gestor />
             </Protected>
           }
         />
 
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AuthProvider>
   )

@@ -1,97 +1,167 @@
 // src/context/AuthContext.tsx
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { findUserCredential, listStudents, listTeachers } from '../lib/mockStore';
-import { UserCredential, Student, Teacher } from '../lib/types';
+import {
+  ReactNode,
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 
-export type Role = 'aluno' | 'professor' | 'gestor';
+import { API_BASE_URL } from '../lib/config'
+import { clearToken, fetchCurrentUser, getToken, saveToken } from '../lib/auth'
+
+export type Role = 'aluno' | 'professor' | 'gestor'
+type BackendRole = 'admin' | 'gestor' | 'professor' | 'aluno'
 
 type Session = {
-  id?: string; // Adicionado: ID do usuário logado
-  username?: string;
-  role?: Role;
-  classCode?: string; // Para alunos
-  subjectCodes?: string[]; // Para professores
-} | null;
+  id: string
+  email: string
+  username: string
+  fullName: string
+  role: Role
+  backendRole: BackendRole
+  schoolId: number | null
+  classroomId: number | null
+  subjectId: number | null
+} | null
 
 type AuthCtx = {
-  session: Session;
-  login: (u: string, p: string, role: Role) => Promise<void>;
-  logout: () => void;
-};
+  session: Session
+  loading: boolean
+  login: (email: string, password: string) => Promise<Role>
+  logout: () => void
+  refresh: () => Promise<Session | null>
+}
 
-const KEY = 'ic_session_v1';
-const Ctx = createContext<AuthCtx | null>(null);
+const BackendToFrontend: Record<BackendRole, Role> = {
+  admin: 'gestor',
+  gestor: 'gestor',
+  professor: 'professor',
+  aluno: 'aluno',
+}
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = useState<Session>(null);
+const AuthContext = createContext<AuthCtx | null>(null)
+
+function normalizeSession(user: Awaited<ReturnType<typeof fetchCurrentUser>>): Session {
+  if (!user) return null
+  const backendRole = user.role as BackendRole
+  const role = BackendToFrontend[backendRole]
+  if (!role) {
+    return null
+  }
+  return {
+    id: String(user.id),
+    email: user.email,
+    username: user.email,
+    fullName: user.full_name ?? user.email,
+    role,
+    backendRole,
+    schoolId: typeof user.school_id === 'number' ? user.school_id : null,
+    classroomId: typeof user.classroom_id === 'number' ? user.classroom_id : null,
+    subjectId: typeof user.subject_id === 'number' ? user.subject_id : null,
+  }
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [session, setSession] = useState<Session>(null)
+  const [loading, setLoading] = useState(true)
+
+  const refresh = useCallback(async () => {
+    const token = getToken()
+    if (!token) {
+      setSession(null)
+      return null
+    }
+
+    try {
+      const user = await fetchCurrentUser()
+      const nextSession = normalizeSession(user)
+      if (!nextSession) {
+        clearToken()
+        setSession(null)
+        return null
+      }
+      setSession(nextSession)
+      return nextSession
+    } catch (error) {
+      console.error('Erro ao validar sessão', error)
+      setSession(null)
+      return null
+    }
+  }, [])
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(KEY);
-      if (raw) {
-        const parsedSession: Session = JSON.parse(raw);
-        if (parsedSession && parsedSession.username && parsedSession.role && parsedSession.id) {
-          setSession(parsedSession);
-        } else {
-          localStorage.removeItem(KEY);
+    ;(async () => {
+      await refresh()
+      setLoading(false)
+    })()
+  }, [refresh])
+
+  const login = useCallback(
+    async (email: string, password: string) => {
+      if (!email || !password) {
+        throw new Error('Informe usuário e senha para continuar.')
+      }
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email, password }),
+        })
+
+        if (!response.ok) {
+          throw new Error('Credenciais inválidas.')
         }
-      }
-    } catch (error) {
-      console.error("Erro ao carregar sessão do localStorage:", error);
-      localStorage.removeItem(KEY);
-    }
-  }, []);
 
-  const value = useMemo<AuthCtx>(() => ({
-    session,
-    async login(username, password, role) {
-      if (!username || !password || !role) {
-        throw new Error('Preencha todos os campos para fazer login.');
-      }
-
-      const user = await findUserCredential(username, password);
-
-      if (!user) {
-        throw new Error('Usuário ou senha inválidos.');
-      }
-      if (user.role !== role) {
-        throw new Error(`Credenciais válidas, mas a função selecionada não corresponde ao usuário.`);
-      }
-
-      let sess: Session = { username: user.username, role: user.role };
-
-      if (user.role === 'aluno') {
-        const allStudents = await listStudents();
-        const student = allStudents.find(s => s.email === user.username);
-        if (student) {
-          sess = { ...sess, id: student.id, classCode: student.classCode };
+        const data = await response.json()
+        if (!data?.access_token) {
+          throw new Error('Token não retornado pelo servidor.')
         }
-      } else if (user.role === 'professor') {
-        const allTeachers = await listTeachers();
-        const teacher = allTeachers.find(t => t.email === user.username);
-        if (teacher) {
-          sess = { ...sess, id: teacher.id, subjectCodes: teacher.subjectCodes };
-        }
-      } else if (user.role === 'gestor') {
-         sess = { ...sess, id: 'gestor-root' }; // ID fixo para o gestor
-      }
 
-      localStorage.setItem(KEY, JSON.stringify(sess));
-      setSession(sess);
+        saveToken(data.access_token)
+        const newSession = await refresh()
+        if (!newSession) {
+          throw new Error('Não foi possível carregar seu perfil.')
+        }
+
+        return newSession.role
+      } catch (error: any) {
+        clearToken()
+        setSession(null)
+        throw new Error(error?.message || 'Não foi possível completar o login.')
+      }
     },
-    logout() {
-      localStorage.removeItem(KEY);
-      setSession(null);
-    },
-  }), [session]);
+    [refresh]
+  )
 
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  const logout = useCallback(() => {
+    clearToken()
+    setSession(null)
+  }, [])
+
+  const value = useMemo<AuthCtx>(
+    () => ({
+      session,
+      loading,
+      login,
+      logout,
+      refresh,
+    }),
+    [session, loading, login, logout, refresh]
+  )
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {
-  const ctx = useContext(Ctx);
+  const ctx = useContext(AuthContext)
   if (!ctx) {
-    throw new Error('useAuth deve ser usado dentro de um AuthProvider');
+    throw new Error('useAuth deve ser usado dentro de um AuthProvider')
   }
-  return ctx;
+  return ctx
 }
