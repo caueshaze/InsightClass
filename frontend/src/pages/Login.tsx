@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 
 import { useAuth, Role } from '../context/AuthContext'
 
@@ -7,7 +7,14 @@ const redirectMap: Record<Role, string> = {
   aluno: '/aluno',
   professor: '/professor',
   gestor: '/gestor',
+  admin: '/admin',
 }
+
+const highlights = [
+  'Fluxo seguro entre alunos, professores e gestores.',
+  'Alertas inteligentes e resolvidos em tempo real.',
+  'Resumos com IA para priorizar respostas.',
+]
 
 export default function Login() {
   const { login } = useAuth()
@@ -16,20 +23,18 @@ export default function Login() {
   const [statusMessage, setStatusMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
+  const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = event.target
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault()
     setIsLoading(true)
     setStatusMessage('Autenticando...')
-
     try {
       const resolvedRole = await login(formData.username, formData.password)
-      const destination = redirectMap[resolvedRole] ?? '/'
-      navigate(destination)
+      navigate(redirectMap[resolvedRole] ?? '/')
       setStatusMessage('')
     } catch (error: any) {
       setStatusMessage(error?.message || 'Falha no login. Verifique suas credenciais.')
@@ -39,62 +44,97 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen grid place-items-center bg-gradient-to-br from-slate-50 to-slate-100">
-      <div className="bg-white/80 backdrop-blur border border-slate-200 rounded-2xl shadow p-6 w-[min(520px,92vw)]">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="h-10 w-10 rounded-xl bg-slate-900 text-white grid place-items-center font-bold">
-            IC
+    <div className="min-h-screen bg-slate-950 text-slate-100">
+      <div className="max-w-6xl mx-auto px-4 py-12 grid gap-12 lg:grid-cols-2 items-center min-h-screen">
+        <section className="space-y-8">
+          <Link to="/" className="inline-flex items-center gap-2 text-slate-200 hover:text-white">
+            <span className="h-10 w-10 rounded-xl bg-white text-slate-900 grid place-items-center font-bold">
+              IC
+            </span>
+            <span className="text-lg font-semibold">InsightClass</span>
+          </Link>
+          <div className="space-y-4">
+            <p className="text-sm uppercase tracking-[0.3em] text-rose-200">Acesso seguro</p>
+            <h1 className="text-4xl font-semibold text-white">Entre na sua área com segurança e contexto.</h1>
+            <p className="text-slate-300">
+              Cada perfil enxerga apenas o que precisa. Use suas credenciais institucionais para
+              continuar o fluxo de feedbacks e alertas.
+            </p>
           </div>
-          <div>
-            <div className="font-semibold text-slate-900">InsightClass</div>
-            <div className="text-xs text-slate-500">Análise de sentimento de feedback escolar</div>
+          <ul className="space-y-3">
+            {highlights.map((item) => (
+              <li
+                key={item}
+                className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200"
+              >
+                <span className="h-2 w-2 rounded-full bg-rose-400" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="w-full">
+          <div className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur p-8 shadow-2xl space-y-6">
+            <div>
+              <p className="text-sm uppercase tracking-wide text-rose-200">Login</p>
+              <h2 className="text-2xl font-semibold text-white mt-1">Use seu e-mail institucional</h2>
+            </div>
+            <form className="space-y-4" onSubmit={handleSubmit}>
+              <div>
+                <label htmlFor="username" className="text-sm text-slate-200">
+                  E-mail
+                </label>
+                <input
+                  id="username"
+                  name="username"
+                  type="email"
+                  className="mt-1 w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white placeholder-slate-400 focus:border-white/40 focus:outline-none"
+                  placeholder="voce@instituicao.com"
+                  value={formData.username}
+                  onChange={handleInputChange}
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+              <div>
+                <label htmlFor="password" className="text-sm text-slate-200">
+                  Senha
+                </label>
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  className="mt-1 w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white placeholder-slate-400 focus:border-white/40 focus:outline-none"
+                  placeholder="••••••••"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+              <button
+                type="submit"
+                className="w-full rounded-2xl bg-white text-slate-900 font-semibold py-3 hover:bg-slate-100 disabled:opacity-60"
+                disabled={isLoading}
+              >
+                {isLoading ? 'Entrando...' : 'Entrar agora'}
+              </button>
+              {statusMessage && (
+                <p className="text-sm text-slate-200 text-center" role="status">
+                  {statusMessage}
+                </p>
+              )}
+            </form>
+            <p className="text-xs text-slate-400">
+              Precisa de ajuda? Envie um e-mail para{' '}
+              <a href="mailto:suporte@insightclass.dev" className="text-slate-200 underline-offset-4 hover:underline">
+                suporte@insightclass.dev
+              </a>
+              .
+            </p>
           </div>
-        </div>
-        <h2 className="text-lg font-semibold mb-3">Entrar</h2>
-        <form className="grid gap-3" onSubmit={handleSubmit}>
-          <div>
-            <label htmlFor="username" className="text-sm text-slate-600">
-              Usuário
-            </label>
-            <input
-              id="username"
-              name="username"
-              className="w-full px-3 py-2 rounded-xl border focus:outline-none focus:ring-2 focus:ring-slate-400"
-              placeholder="seu.email@exemplo.com"
-              value={formData.username}
-              onChange={handleInputChange}
-              required
-              disabled={isLoading}
-              type="email"
-            />
-          </div>
-          <div>
-            <label htmlFor="password" className="text-sm text-slate-600">
-              Senha
-            </label>
-            <input
-              id="password"
-              name="password"
-              className="w-full px-3 py-2 rounded-xl border focus:outline-none focus:ring-2 focus:ring-slate-400"
-              type="password"
-              placeholder="••••••••"
-              value={formData.password}
-              onChange={handleInputChange}
-              required
-              disabled={isLoading}
-            />
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              type="submit"
-              className="px-4 py-2 rounded-xl text-white font-medium bg-slate-900 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={isLoading}
-            >
-              {isLoading ? 'Entrando...' : 'Entrar'}
-            </button>
-            {statusMessage && <span className="text-sm text-slate-600">{statusMessage}</span>}
-          </div>
-        </form>
+        </section>
       </div>
     </div>
   )

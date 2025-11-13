@@ -6,6 +6,7 @@ import Login from './pages/Login'
 import Aluno from './pages/Aluno'
 import Professor from './pages/Professor'
 import Gestor from './pages/Gestor'
+import Admin from './pages/Admin'
 import LandingPage from './pages/LandingPage'
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
 import TermsOfUsePage from './pages/TermsOfUsePage'
@@ -40,6 +41,14 @@ export default function App() {
           element={
             <Protected roles={['gestor']}>
               <Gestor />
+            </Protected>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <Protected roles={['admin']}>
+              <Admin />
             </Protected>
           }
         />

@@ -7,16 +7,16 @@ type PersonalWelcomeProps<T extends string> = {
 
 export function PersonalWelcome<T extends string>({ roleLabel, tips, actions, onNavigate }: PersonalWelcomeProps<T>) {
   return (
-    <section className="card p-6 space-y-4">
-      <div>
-        <p className="text-sm font-medium text-slate-500 uppercase tracking-wide">Boas-vindas</p>
-        <h3 className="text-2xl font-semibold text-slate-900">Que bom ter você aqui, {roleLabel}!</h3>
-        <p className="text-sm text-slate-600">Escolha por onde deseja começar:</p>
+    <section className="rounded-3xl border border-slate-100 bg-gradient-to-br from-white to-slate-50 p-6 space-y-5 shadow-sm">
+      <div className="flex flex-col gap-2">
+        <p className="text-xs uppercase tracking-wide text-rose-500">Boas-vindas</p>
+        <h3 className="text-3xl font-semibold text-slate-900">Que bom ter você aqui, {roleLabel}!</h3>
+        <p className="text-sm text-slate-600">Veja atalhos rápidos e dicas para aproveitar o painel.</p>
       </div>
-      <ul className="space-y-2 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm text-slate-600">
+      <ul className="grid gap-3 rounded-2xl border border-slate-100 bg-white/70 p-4 text-sm text-slate-600 md:grid-cols-2">
         {tips.map((tip, index) => (
-          <li key={`tip-${index}`} className="flex gap-2">
-            <span>•</span>
+          <li key={`tip-${index}`} className="flex items-start gap-3">
+            <span className="text-rose-500 mt-0.5">•</span>
             <span>{tip}</span>
           </li>
         ))}
@@ -25,7 +25,7 @@ export function PersonalWelcome<T extends string>({ roleLabel, tips, actions, on
         {actions.map((action) => (
           <button
             key={action.target}
-            className="group rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:-translate-y-1 hover:border-slate-300 hover:shadow"
+            className="rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:-translate-y-1 hover:border-rose-200 hover:shadow"
             onClick={() => onNavigate(action.target)}
           >
             <p className="text-base font-semibold text-slate-900">{action.label}</p>

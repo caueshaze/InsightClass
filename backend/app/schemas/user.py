@@ -20,15 +20,12 @@ class UserCreate(UserBase):
     classroom_id: Optional[int] = Field(
         default=None, description="ID da turma do usuário (quando aplicável)"
     )
-    subject_id: Optional[int] = Field(
-        default=None, description="ID da matéria associada (quando aplicável)"
-    )
-    classroom_ids: Optional[list[int]] = Field(
+    teachable_subject_ids: Optional[list[int]] = Field(
         default=None,
-        description="Lista de turmas atribuídas (para professores)",
+        description="Lista de matérias que o professor pode lecionar",
     )
 
-    @field_validator("school_id", "classroom_id", "subject_id", mode="before")
+    @field_validator("school_id", "classroom_id", mode="before")
     @classmethod
     def _normalize_optional_fk(cls, value: Optional[int | str]) -> Optional[int]:
         """
@@ -50,9 +47,9 @@ class UserCreate(UserBase):
         except (TypeError, ValueError):
             return None
 
-    @field_validator("classroom_ids", mode="before")
+    @field_validator("teachable_subject_ids", mode="before")
     @classmethod
-    def _normalize_classroom_list(cls, value):
+    def _normalize_subject_list(cls, value):
         if value in (None, "", [], ()):
             return None
         if isinstance(value, str):
@@ -72,9 +69,9 @@ class UserPublic(UserBase):
     id: str
     school_id: Optional[int] = None
     classroom_id: Optional[int] = None
-    subject_id: Optional[int] = None
-    teaching_classroom_ids: list[int] = Field(
-        default_factory=list, description="IDs das turmas atribuídas ao professor"
+    teachable_subject_ids: list[int] = Field(
+        default_factory=list,
+        description="IDs das matérias habilitadas para o professor",
     )
 
     model_config = ConfigDict(from_attributes=True)
@@ -87,10 +84,9 @@ class UserUpdate(BaseModel):
     password: Optional[str] = Field(default=None, min_length=6)
     school_id: Optional[int] = None
     classroom_id: Optional[int] = None
-    subject_id: Optional[int] = None
-    classroom_ids: Optional[list[int]] = None
+    teachable_subject_ids: Optional[list[int]] = None
 
-    @field_validator("school_id", "classroom_id", "subject_id", mode="before")
+    @field_validator("school_id", "classroom_id", mode="before")
     @classmethod
     def _normalize_optional_fk(cls, value: Optional[int | str]) -> Optional[int]:
         if value is None:
@@ -108,9 +104,9 @@ class UserUpdate(BaseModel):
         except (TypeError, ValueError):
             return None
 
-    @field_validator("classroom_ids", mode="before")
+    @field_validator("teachable_subject_ids", mode="before")
     @classmethod
-    def _normalize_classroom_list(cls, value):
+    def _normalize_subject_list(cls, value):
         if value in (None, "", [], ()):
             return None
         if isinstance(value, str):

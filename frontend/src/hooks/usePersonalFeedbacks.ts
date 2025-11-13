@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 
 import { fetchMyFeedbacks, fetchSummaryForMe } from '../lib/api'
-import type { FeedbackMineResponse, FeedbackSummary } from '../lib/types'
+import type { FeedbackMineResponse, FeedbackPublic, FeedbackSummary } from '../lib/types'
 
 export type SentimentFilter = 'all' | 'positivo' | 'neutro' | 'negativo'
 
@@ -9,10 +9,12 @@ export function usePersonalFeedbacks() {
   const [feedbacks, setFeedbacks] = useState<FeedbackMineResponse>({ sent: [], received: [] })
   const [loading, setLoading] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
+  const [hiddenSentIds, setHiddenSentIds] = useState<number[]>([])
 
   const [summary, setSummary] = useState<FeedbackSummary | null>(null)
   const [summaryStatus, setSummaryStatus] = useState<string | null>(null)
   const [summaryLoading, setSummaryLoading] = useState(false)
+  const [actionStatus, setActionStatus] = useState<string | null>(null)
 
   const [filter, setFilter] = useState<SentimentFilter>('all')
 
@@ -34,9 +36,13 @@ export function usePersonalFeedbacks() {
   const loadFeedbacks = useCallback(async () => {
     setLoading(true)
     setNotice(null)
+    setActionStatus(null)
     try {
       const data = await fetchMyFeedbacks()
       setFeedbacks(data)
+      setHiddenSentIds((prev) =>
+        prev.filter((id) => data.sent.some((feedback) => feedback.id === id)),
+      )
     } catch (error: any) {
       setFeedbacks({ sent: [], received: [] })
       setNotice(friendlyMessage(error?.message))
@@ -79,11 +85,24 @@ export function usePersonalFeedbacks() {
     )
   }, [feedbacks.received, filter])
 
+  const visibleSent = useMemo(() => {
+    if (hiddenSentIds.length === 0) return feedbacks.sent
+    const hiddenSet = new Set(hiddenSentIds)
+    return feedbacks.sent.filter((feedback) => !hiddenSet.has(feedback.id))
+  }, [feedbacks.sent, hiddenSentIds])
+
+  const hideSentFeedback = useCallback((feedback: FeedbackPublic) => {
+    setHiddenSentIds((prev) => (prev.includes(feedback.id) ? prev : [...prev, feedback.id]))
+    setActionStatus('Feedback ocultado da sua lista com sucesso.')
+  }, [])
+
   return {
     feedbacks,
+    visibleSent,
     filteredReceived,
     loading,
     notice,
+    actionStatus,
     stats,
     filter,
     setFilter,
@@ -92,5 +111,6 @@ export function usePersonalFeedbacks() {
     summaryLoading,
     loadFeedbacks,
     handleSummary,
+    hideSentFeedback,
   }
 }

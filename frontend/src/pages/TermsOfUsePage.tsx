@@ -1,61 +1,109 @@
 import { Navbar } from '../components/layout/Navbar'
 import { Footer } from '../components/layout/Footer'
 
+const obligations = [
+  {
+    title: 'Instituição contratante',
+    items: [
+      'Definir administradores responsáveis e garantir que apenas usuários autorizados recebam acesso.',
+      'Configurar perfis, turmas e matérias em conformidade com suas políticas internas.',
+      'Responder prontamente a alertas críticos sinalizados pela plataforma.',
+    ],
+  },
+  {
+    title: 'Usuários finais',
+    items: [
+      'Manter credenciais em sigilo e utilizar o InsightClass apenas para fins acadêmicos.',
+      'Respeitar a confidencialidade dos feedbacks a que tiver acesso.',
+      'Notificar a instituição ou o suporte InsightClass sobre incidentes de segurança ou uso indevido.',
+    ],
+  },
+]
+
+const acceptableUse = [
+  'É proibido inserir conteúdo que viole leis locais, promova discursos de ódio ou exponha dados sensíveis de terceiros sem consentimento.',
+  'Não é permitido explorar vulnerabilidades, realizar engenharia reversa ou tentar interromper serviços.',
+  'A plataforma não deve ser utilizada como canal oficial de emergências: casos críticos devem seguir o protocolo da instituição.',
+]
+
+const lifecycle = [
+  'Feedbacks permanecem acessíveis enquanto necessários para fins pedagógicos ou legais.',
+  'Administradores podem excluir registros específicos, preservando trilha de auditoria.',
+  'Ao fim do contrato, os dados podem ser exportados ou anonimizados em até 30 dias úteis.',
+]
+
 export default function TermsOfUsePage() {
-  const commitments = [
-    'Utilizar o InsightClass apenas para finalidades acadêmicas e institucionais autorizadas.',
-    'Respeitar a confidencialidade dos feedbacks acessados segundo o seu papel.',
-    'Não compartilhar senhas ou tokens de acesso com terceiros.',
-    'Reportar imediatamente qualquer incidente de segurança ou uso indevido.',
-  ]
-
   return (
-    <div className="bg-gradient-to-b from-white via-slate-50 to-slate-100 text-slate-900">
+    <div className="bg-slate-950 text-slate-100 min-h-screen">
       <Navbar />
-      <main className="max-w-4xl mx-auto px-4 py-12 space-y-10">
-        <header className="space-y-4">
-          <p className="text-sm font-semibold text-slate-500 uppercase tracking-wide">
-            Termos de Uso InsightClass
+      <main className="max-w-5xl mx-auto px-4 py-16 space-y-12">
+        <section className="space-y-4 text-center">
+          <p className="text-sm font-semibold text-rose-200 uppercase tracking-[0.3em]">
+            Termos InsightClass
           </p>
-          <h1 className="text-4xl font-semibold text-slate-900">Termos de Uso</h1>
-          <p className="text-slate-600">
-            Estes termos orientam o uso da plataforma InsightClass pelos diferentes perfis (admins,
-            gestores, professores e alunos). O texto serve como referência padrão e deve ser
-            personalizado para cada cliente.
-          </p>
-        </header>
-
-        <section className="card p-6 space-y-3">
-          <h2 className="text-2xl font-semibold">Licença e acesso</h2>
-          <p className="text-slate-600">
-            Cada instituição recebe credenciais exclusivas e é responsável por cadastrar usuários.
-            O acesso é individual, autenticado via login e token JWT. O compartilhamento de contas é
-            proibido e pode resultar em bloqueio automático.
+          <h1 className="text-4xl md:text-5xl font-semibold text-white">Termos de Uso</h1>
+          <p className="text-slate-300 max-w-3xl mx-auto">
+            Estes termos descrevem como administradores, gestores, professores e alunos devem utilizar o
+            InsightClass. A versão a seguir pode ser personalizada de acordo com o contrato firmado com
+            cada rede de ensino.
           </p>
         </section>
 
-        <section className="card p-6 space-y-3">
-          <h2 className="text-2xl font-semibold">Responsabilidades dos usuários</h2>
-          <ul className="list-disc pl-5 space-y-2 text-slate-600">
-            {commitments.map((item) => (
+        <section className="grid gap-6 md:grid-cols-2">
+          {obligations.map((block) => (
+            <article key={block.title} className="rounded-3xl border border-white/10 bg-white/5 p-6 space-y-3">
+              <h2 className="text-2xl font-semibold text-white">{block.title}</h2>
+              <ul className="text-sm text-slate-200 space-y-2 list-disc pl-5">
+                {block.items.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </article>
+          ))}
+        </section>
+
+        <section className="rounded-3xl border border-white/10 bg-white/5 p-6 space-y-3">
+          <h2 className="text-2xl font-semibold text-white">Uso aceitável</h2>
+          <ul className="text-sm text-slate-200 space-y-3 list-disc pl-5">
+            {acceptableUse.map((item) => (
               <li key={item}>{item}</li>
             ))}
           </ul>
         </section>
 
-        <section className="card p-6 space-y-3">
-          <h2 className="text-2xl font-semibold">Tratamento dos feedbacks</h2>
-          <p className="text-slate-600">
-            Feedbacks podem conter relatos sensíveis. Todos os participantes concordam em manter o
-            sigilo e tratar os conteúdos com respeito, adotando medidas de resposta alinhadas às
-            políticas internas da rede de ensino.
-          </p>
-          <p className="text-slate-600">
-            InsightClass utiliza modelos de IA e mecanismos de segurança para identificar possíveis
-            abusos, mas a decisão final sobre ações corretivas cabe à instituição.
-          </p>
-          <p className="text-xs text-slate-500">
-            Conteúdo genérico para demonstração; adapte conforme termo jurídico oficial.
+        <section className="grid gap-6 md:grid-cols-2">
+          <article className="rounded-3xl border border-white/10 bg-white/5 p-6 space-y-3">
+            <h2 className="text-2xl font-semibold text-white">Disponibilidade e suporte</h2>
+            <p className="text-sm text-slate-200">
+              O InsightClass opera em infraestrutura redundante com monitoramento 24/7. Manutenções
+              programadas serão comunicadas com antecedência e, em caso de indisponibilidade, seguimos
+              SLAs definidos em contrato. O suporte oficial pode ser acionado via{' '}
+              <a
+                href="mailto:suporte@insightclass.dev"
+                className="text-white font-semibold underline-offset-4 hover:underline"
+              >
+                suporte@insightclass.dev
+              </a>
+              .
+            </p>
+          </article>
+          <article className="rounded-3xl border border-white/10 bg-white/5 p-6 space-y-3">
+            <h2 className="text-2xl font-semibold text-white">Ciclo de vida dos dados</h2>
+            <ul className="text-sm text-slate-200 space-y-2 list-disc pl-5">
+              {lifecycle.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </article>
+        </section>
+
+        <section className="rounded-3xl border border-white/10 bg-white/5 p-6 space-y-3">
+          <h2 className="text-2xl font-semibold text-white">Penalidades</h2>
+          <p className="text-sm text-slate-200">
+            O descumprimento destes termos pode resultar em bloqueio de acesso, exclusão de conteúdo e,
+            quando aplicável, responsabilização administrativa ou civil conforme contrato e legislação
+            vigente. A instituição é responsável por comunicar os usuários sobre as políticas internas
+            e por tomar medidas disciplinares internas quando necessário.
           </p>
         </section>
       </main>

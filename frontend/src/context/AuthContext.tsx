@@ -12,7 +12,7 @@ import {
 import { API_BASE_URL } from '../lib/config'
 import { clearToken, fetchCurrentUser, getToken, saveToken } from '../lib/auth'
 
-export type Role = 'aluno' | 'professor' | 'gestor'
+export type Role = 'aluno' | 'professor' | 'gestor' | 'admin'
 type BackendRole = 'admin' | 'gestor' | 'professor' | 'aluno'
 
 type Session = {
@@ -36,7 +36,7 @@ type AuthCtx = {
 }
 
 const BackendToFrontend: Record<BackendRole, Role> = {
-  admin: 'gestor',
+  admin: 'admin',
   gestor: 'gestor',
   professor: 'professor',
   aluno: 'aluno',

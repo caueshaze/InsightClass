@@ -27,9 +27,11 @@ export default function Aluno() {
   const [activeSection, setActiveSection] = useState<Section>('welcome')
   const {
     feedbacks,
+    visibleSent,
     filteredReceived,
     loading,
     notice,
+    actionStatus,
     stats,
     filter,
     setFilter,
@@ -38,6 +40,7 @@ export default function Aluno() {
     summaryLoading,
     loadFeedbacks,
     handleSummary,
+    hideSentFeedback,
   } = usePersonalFeedbacks()
 
   useEffect(() => {
@@ -87,19 +90,24 @@ export default function Aluno() {
             filter={filter}
             onFilterChange={setFilter}
             onRefresh={loadFeedbacks}
+            showTriggerBadge={false}
           />
         )
       case 'sent':
         return (
           <FeedbackListSection
             title="Feedbacks enviados"
-            items={feedbacks.sent}
+            items={visibleSent}
             loading={loading}
             infoMessage={notice}
             emptyMessage="Você ainda não enviou feedbacks."
             badgeLabel="Enviado"
             hideClassification
             onRefresh={loadFeedbacks}
+            onDeleteItem={hideSentFeedback}
+            deleteLabel="Ocultar"
+            actionStatus={actionStatus}
+            showTriggerBadge={false}
           />
         )
       case 'insights':

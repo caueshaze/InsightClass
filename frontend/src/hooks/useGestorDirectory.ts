@@ -18,6 +18,7 @@ import {
   updateSchool,
   updateSubject,
 } from '../lib/api'
+import type { ApiError } from '../lib/api'
 import type {
   AdminRole,
   AdminUserUpdateInput,
@@ -40,18 +41,18 @@ export type UserFormState = {
   full_name: string
   email: string
   password: string
-  role: AdminRole
+  role: AdminRole | ''
   school_id: string
   classroom_id: string
-  classroom_ids: string[]
-  subject_id: string
+  teachable_subject_ids: string[]
 }
 
 export type SubjectFormState = {
   name: string
   code: string
   school_id: string
-  teacher_id: string
+  color: string
+  description: string
 }
 
 export type ClassroomFormState = {
@@ -59,6 +60,7 @@ export type ClassroomFormState = {
   code: string
   school_id: string
   subject_ids: string[]
+  grade_level: string
 }
 
 export function useGestorDirectory({ isAdmin, isManager, managerSchoolId }: UseGestorDirectoryParams) {
@@ -75,13 +77,12 @@ export function useGestorDirectory({ isAdmin, isManager, managerSchoolId }: UseG
       full_name: '',
       email: '',
       password: '',
-      role: (isManager ? 'professor' : 'gestor') as AdminRole,
+      role: '',
       school_id: managerSchoolValue,
       classroom_id: '',
-      classroom_ids: [],
-      subject_id: '',
+      teachable_subject_ids: [],
     }),
-    [isManager, managerSchoolValue],
+    [managerSchoolValue],
   )
 
   const [userForm, setUserForm] = useState<UserFormState>(() => buildUserFormDefaults())
@@ -104,8 +105,7 @@ export function useGestorDirectory({ isAdmin, isManager, managerSchoolId }: UseG
         role: user.role,
         school_id: user.school_id ? String(user.school_id) : managerSchoolValue,
         classroom_id: user.classroom_id ? String(user.classroom_id) : '',
-        classroom_ids: (user.teaching_classroom_ids || []).map((id) => String(id)),
-        subject_id: user.subject_id ? String(user.subject_id) : '',
+        teachable_subject_ids: (user.teachable_subject_ids || []).map((id) => String(id)),
       })
       setUserFormMode('edit')
       setUserEditingId(user.id)
@@ -132,7 +132,8 @@ export function useGestorDirectory({ isAdmin, isManager, managerSchoolId }: UseG
     name: '',
     code: '',
     school_id: managerSchoolValue,
-    teacher_id: '',
+    color: '',
+    description: '',
   })
   const [subjectFormMode, setSubjectFormMode] = useState<'create' | 'edit'>('create')
   const [subjectEditingId, setSubjectEditingId] = useState<number | null>(null)
@@ -178,24 +179,6 @@ export function useGestorDirectory({ isAdmin, isManager, managerSchoolId }: UseG
   const subjectsBySchool = useMemo(
     () => subjects.filter((subject) => !managerSchoolId || subject.school_id === managerSchoolId),
     [subjects, managerSchoolId],
-  )
-
-  const availableTeachers = useMemo(
-    () =>
-      users.filter(
-        (user) =>
-          user.role === 'professor' &&
-          (isAdmin || !managerSchoolId ? true : user.school_id === managerSchoolId),
-      ),
-    [users, isAdmin, managerSchoolId],
-  )
-
-  const teachersForSelectedSchool = useMemo(
-    () =>
-      availableTeachers.filter(
-        (teacher) => !subjectForm.school_id || teacher.school_id === Number(subjectForm.school_id),
-      ),
-    [availableTeachers, subjectForm.school_id],
   )
 
   const filteredUsers = useMemo(() => {
@@ -280,6 +263,11 @@ export function useGestorDirectory({ isAdmin, isManager, managerSchoolId }: UseG
         setUserFormStatus('Preencha nome e e-mail.')
         return
       }
+      if (!userForm.role) {
+        setUserFormStatus('Selecione o perfil do usuário.')
+        return
+      }
+      const role = userForm.role as AdminRole
       const trimmedPassword = userForm.password.trim()
       if (userFormMode === 'create' && trimmedPassword.length < 6) {
         setUserFormStatus('A senha temporária deve ter ao menos 6 caracteres.')
@@ -290,12 +278,13 @@ export function useGestorDirectory({ isAdmin, isManager, managerSchoolId }: UseG
         return
       }
 
-      const schoolId = userForm.role === 'admin' ? undefined : userForm.school_id ? Number(userForm.school_id) : undefined
+      const schoolId = role === 'admin' ? undefined : userForm.school_id ? Number(userForm.school_id) : undefined
       const classroomId = userForm.classroom_id ? Number(userForm.classroom_id) : undefined
-      const classroomIds = userForm.classroom_ids.map((value) => Number(value)).filter((value) => !Number.isNaN(value))
-      const subjectId = userForm.subject_id ? Number(userForm.subject_id) : undefined
+      const teachableSubjectIds = userForm.teachable_subject_ids
+        .map((value) => Number(value))
+        .filter((value) => !Number.isNaN(value))
 
-      if (userForm.role !== 'admin' && !schoolId) {
+      if (role !== 'admin' && !schoolId) {
         setUserFormStatus('Selecione a unidade escolar para este perfil.')
         return
       }
@@ -303,11 +292,11 @@ export function useGestorDirectory({ isAdmin, isManager, managerSchoolId }: UseG
         setUserFormStatus('Gestores só podem operar na própria unidade.')
         return
       }
-      if (userForm.role === 'professor' && (!subjectId || classroomIds.length === 0)) {
-        setUserFormStatus('Professores precisam de matéria e ao menos uma turma.')
+      if (role === 'professor' && teachableSubjectIds.length === 0) {
+        setUserFormStatus('Professores precisam ter ao menos uma matéria habilitada.')
         return
       }
-      if (userForm.role === 'aluno' && !classroomId) {
+      if (role === 'aluno' && !classroomId) {
         setUserFormStatus('Alunos precisam de uma turma vinculada.')
         return
       }
@@ -319,14 +308,10 @@ export function useGestorDirectory({ isAdmin, isManager, managerSchoolId }: UseG
           const updatePayload: AdminUserUpdateInput = {
             full_name: userForm.full_name.trim(),
             email: userForm.email.trim(),
-            role: userForm.role,
+            role,
             school_id: schoolId,
-            classroom_id: userForm.role === 'aluno' ? classroomId : undefined,
-            classroom_ids: userForm.role === 'professor' ? classroomIds : undefined,
-            subject_id:
-              userForm.role === 'aluno'
-                ? subjectId ?? classroomMap[classroomId ?? -1]?.subject_ids?.[0] ?? undefined
-                : subjectId,
+            classroom_id: role === 'aluno' ? classroomId : undefined,
+            teachable_subject_ids: role === 'professor' ? teachableSubjectIds : undefined,
           }
           if (trimmedPassword) {
             updatePayload.password = trimmedPassword
@@ -338,14 +323,10 @@ export function useGestorDirectory({ isAdmin, isManager, managerSchoolId }: UseG
             full_name: userForm.full_name.trim(),
             email: userForm.email.trim(),
             password: trimmedPassword,
-            role: userForm.role,
+            role,
             school_id: schoolId,
-            classroom_id: userForm.role === 'aluno' ? classroomId : undefined,
-            classroom_ids: userForm.role === 'professor' ? classroomIds : undefined,
-            subject_id:
-              userForm.role === 'aluno'
-                ? subjectId ?? classroomMap[classroomId ?? -1]?.subject_ids?.[0] ?? undefined
-                : subjectId,
+            classroom_id: role === 'aluno' ? classroomId : undefined,
+            teachable_subject_ids: role === 'professor' ? teachableSubjectIds : undefined,
           })
           setUserFormStatus('Usuário registrado!')
         }
@@ -381,7 +362,12 @@ export function useGestorDirectory({ isAdmin, isManager, managerSchoolId }: UseG
         }
         await loadUsers()
       } catch (error: any) {
-        setUserActionStatus(error?.message || 'Não foi possível remover o usuário.')
+        const status = (error as ApiError)?.status
+        setUserActionStatus(
+          status === 409
+            ? '⚠️ Não é possível remover: existem vínculos ativos relacionados a este usuário.'
+            : error?.message || 'Não foi possível remover o usuário.',
+        )
       }
     },
     [loadUsers, userEditingId, resetUserForm],
@@ -437,7 +423,12 @@ export function useGestorDirectory({ isAdmin, isManager, managerSchoolId }: UseG
         if (schoolEditingId === schoolId) resetSchoolForm()
         await loadSchools()
       } catch (error: any) {
-        setSchoolFormStatus(error?.message || 'Não foi possível remover a unidade.')
+        const status = (error as ApiError)?.status
+        setSchoolFormStatus(
+          status === 409
+            ? '⚠️ Não é possível remover a unidade enquanto houver usuários, turmas ou matérias vinculadas.'
+            : error?.message || 'Não foi possível remover a unidade.',
+        )
       }
     },
     [loadSchools, resetSchoolForm, schoolEditingId],
@@ -448,7 +439,8 @@ export function useGestorDirectory({ isAdmin, isManager, managerSchoolId }: UseG
       name: subject.name,
       code: subject.code ?? '',
       school_id: String(subject.school_id),
-      teacher_id: subject.teacher_id ?? '',
+      color: subject.color ?? '',
+      description: subject.description ?? '',
     })
     setSubjectEditingId(subject.id)
     setSubjectFormMode('edit')
@@ -456,7 +448,7 @@ export function useGestorDirectory({ isAdmin, isManager, managerSchoolId }: UseG
   }, [])
 
   const resetSubjectForm = useCallback(() => {
-    setSubjectForm({ name: '', code: '', school_id: managerSchoolValue, teacher_id: '' })
+    setSubjectForm({ name: '', code: '', school_id: managerSchoolValue, color: '', description: '' })
     setSubjectEditingId(null)
     setSubjectFormMode('create')
   }, [managerSchoolValue])
@@ -475,7 +467,8 @@ export function useGestorDirectory({ isAdmin, isManager, managerSchoolId }: UseG
         name: subjectForm.name.trim(),
         code: subjectForm.code?.trim() || undefined,
         school_id: schoolId,
-        teacher_id: subjectForm.teacher_id || undefined,
+        color: subjectForm.color?.trim() || undefined,
+        description: subjectForm.description?.trim() || undefined,
       }
       try {
         if (subjectFormMode === 'edit' && subjectEditingId) {
@@ -504,7 +497,12 @@ export function useGestorDirectory({ isAdmin, isManager, managerSchoolId }: UseG
         if (subjectEditingId === subjectId) resetSubjectForm()
         await loadSubjects()
       } catch (error: any) {
-        setSubjectFormStatus(error?.message || 'Não foi possível remover a matéria.')
+        const status = (error as ApiError)?.status
+        setSubjectFormStatus(
+          status === 409
+            ? '⚠️ Não é possível remover a matéria enquanto houver turmas ou professores vinculados.'
+            : error?.message || 'Não foi possível remover a matéria.',
+        )
       }
     },
     [loadSubjects, resetSubjectForm, subjectEditingId],
@@ -515,6 +513,7 @@ export function useGestorDirectory({ isAdmin, isManager, managerSchoolId }: UseG
       name: classroom.name,
       code: classroom.code ?? '',
       school_id: String(classroom.school_id),
+      grade_level: classroom.grade_level ?? '',
       subject_ids: classroom.subject_ids?.map((subjectId) => String(subjectId)) ?? [],
     })
     setClassroomEditingId(classroom.id)
@@ -527,6 +526,7 @@ export function useGestorDirectory({ isAdmin, isManager, managerSchoolId }: UseG
       name: '',
       code: '',
       school_id: managerSchoolValue,
+      grade_level: '',
       subject_ids: [],
     })
     setClassroomEditingId(null)
@@ -548,6 +548,7 @@ export function useGestorDirectory({ isAdmin, isManager, managerSchoolId }: UseG
         name: classroomForm.name.trim(),
         code: classroomForm.code?.trim() || undefined,
         school_id: schoolId,
+        grade_level: classroomForm.grade_level?.trim() || undefined,
         subject_ids: subjectIds,
       }
       try {
@@ -577,7 +578,12 @@ export function useGestorDirectory({ isAdmin, isManager, managerSchoolId }: UseG
         if (classroomEditingId === classroomId) resetClassroomForm()
         await loadClassrooms()
       } catch (error: any) {
-        setClassroomFormStatus(error?.message || 'Não foi possível remover a turma.')
+        const status = (error as ApiError)?.status
+        setClassroomFormStatus(
+          status === 409
+            ? '⚠️ Não é possível remover a turma enquanto houver alunos ou matérias vinculadas.'
+            : error?.message || 'Não foi possível remover a turma.',
+        )
       }
     },
     [loadClassrooms, resetClassroomForm, classroomEditingId],
@@ -635,7 +641,6 @@ export function useGestorDirectory({ isAdmin, isManager, managerSchoolId }: UseG
       resetSubjectForm,
       handleSubjectSubmit,
       handleDeleteSubject,
-      teachersForSelectedSchool,
     },
     classroomsState: {
       classrooms,
@@ -659,7 +664,6 @@ export function useGestorDirectory({ isAdmin, isManager, managerSchoolId }: UseG
       subjectsBySchool,
       subjectMap,
       classroomMap,
-      availableTeachers,
     },
   }
 }

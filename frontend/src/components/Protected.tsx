@@ -9,7 +9,7 @@ type BackendRole = 'admin' | 'gestor' | 'professor' | 'aluno'
 type AllowedRole = Role | BackendRole
 
 const backendToFront: Record<BackendRole, Role> = {
-  admin: 'gestor',
+  admin: 'admin',
   gestor: 'gestor',
   professor: 'professor',
   aluno: 'aluno',

@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import logging
 import re
+from time import perf_counter
 from typing import Iterable, Sequence, List, Optional
 
 from sqlalchemy import desc, select
@@ -206,6 +207,20 @@ def _post_process_summary(text: str) -> str:
         text = "\n\n".join(paragraphs[:3])
 
     return text.strip()
+
+
+def measure_llm_latency(prompt_text: str = "Gere um breve resumo positivo.", max_new_tokens: int = 64) -> float | None:
+    """
+    Executa uma inferência curta no Gemma e retorna o tempo em milissegundos.
+    Retorna None quando o LLM não estiver habilitado ou ocorrer falha durante a geração.
+    """
+    start = perf_counter()
+    try:
+        _run_llm(prompt_text, max_new_tokens=max_new_tokens)
+    except Exception as exc:  # pragma: no cover - depende do ambiente
+        LOGGER.info("Não foi possível medir latência do Gemma: %s", exc)
+        return None
+    return (perf_counter() - start) * 1000
 
 # ==========================================================
 # Execução do Gemma

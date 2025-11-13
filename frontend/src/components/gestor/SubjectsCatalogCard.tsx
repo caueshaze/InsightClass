@@ -1,4 +1,4 @@
-import type { DirectoryUser, School, Subject } from '../../lib/types'
+import type { School, Subject } from '../../lib/types'
 import type { SubjectFormState } from '../../hooks/useGestorDirectory'
 
 type SubjectsCatalogCardProps = {
@@ -16,8 +16,6 @@ type SubjectsCatalogCardProps = {
   onReset: () => void
   visibleSchools: School[]
   schoolMap: Record<number, School>
-  teacherOptions: DirectoryUser[]
-  teacherDirectory: DirectoryUser[]
 }
 
 export function SubjectsCatalogCard({
@@ -35,8 +33,6 @@ export function SubjectsCatalogCard({
   onReset,
   visibleSchools,
   schoolMap,
-  teacherOptions,
-  teacherDirectory,
 }: SubjectsCatalogCardProps) {
   return (
     <div className="card p-6 space-y-4">
@@ -69,13 +65,13 @@ export function SubjectsCatalogCard({
           />
         </div>
         <div className="space-y-2">
-          <label className="label" htmlFor="subject_school">Unidade</label>
+          <label className="label" htmlFor="subject_school">Unidade escolar</label>
           {visibleSchools.length > 1 ? (
             <select
               id="subject_school"
               className="input"
               value={form.school_id}
-              onChange={(event) => onChange({ school_id: event.target.value, teacher_id: '' })}
+              onChange={(event) => onChange({ school_id: event.target.value })}
               disabled={submitting}
               required
             >
@@ -93,25 +89,26 @@ export function SubjectsCatalogCard({
           )}
         </div>
         <div className="space-y-2">
-          <label className="label" htmlFor="subject_teacher">Professor responsável</label>
-          <select
-            id="subject_teacher"
-            className="input"
-            value={form.teacher_id}
-            onChange={(event) => onChange({ teacher_id: event.target.value })}
-            disabled={submitting || !form.school_id || teacherOptions.length === 0}
-          >
-            <option value="">Definir depois</option>
-            {teacherOptions.map((teacher) => (
-              <option key={teacher.id} value={teacher.id}>
-                {teacher.full_name} • {teacher.email}
-              </option>
-            ))}
-          </select>
-          {!form.school_id && <p className="text-xs text-slate-500">Selecione a unidade para listar os professores.</p>}
-          {form.school_id && teacherOptions.length === 0 && (
-            <p className="text-xs text-slate-500">Não há professores cadastrados nesta unidade ainda.</p>
-          )}
+          <label className="label" htmlFor="subject_color">Cor (opcional)</label>
+          <input
+            id="subject_color"
+            type="color"
+            className="h-10 w-16 rounded-xl border border-slate-200 bg-white p-1"
+            value={form.color || '#3b82f6'}
+            onChange={(event) => onChange({ color: event.target.value })}
+            disabled={submitting}
+          />
+        </div>
+        <div className="space-y-2 md:col-span-2">
+          <label className="label" htmlFor="subject_description">Descrição</label>
+          <textarea
+            id="subject_description"
+            className="input min-h-[80px]"
+            value={form.description}
+            onChange={(event) => onChange({ description: event.target.value })}
+            disabled={submitting}
+            placeholder="Resumo ou observações que ajudam os docentes a entender o escopo desta matéria."
+          />
         </div>
         <div className="md:col-span-2 flex gap-3">
           <button type="submit" className="btn" disabled={submitting}>
@@ -136,10 +133,10 @@ export function SubjectsCatalogCard({
           <table className="min-w-full divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="px-3 py-2">Nome</th>
+                <th className="px-3 py-2">Matéria</th>
                 <th className="px-3 py-2">Unidade</th>
-                <th className="px-3 py-2">Professor</th>
                 <th className="px-3 py-2">Código</th>
+                <th className="px-3 py-2">Cor</th>
                 <th className="px-3 py-2 text-right">Ações</th>
               </tr>
             </thead>
@@ -148,12 +145,17 @@ export function SubjectsCatalogCard({
                 <tr key={subject.id}>
                   <td className="px-3 py-2 font-medium text-slate-900">{subject.name}</td>
                   <td className="px-3 py-2 text-slate-600">{schoolMap[subject.school_id]?.name ?? '—'}</td>
-                  <td className="px-3 py-2 text-slate-600">
-                    {subject.teacher_id
-                      ? teacherDirectory.find((teacher) => teacher.id === subject.teacher_id)?.full_name ?? '—'
-                      : '—'}
-                  </td>
                   <td className="px-3 py-2 text-slate-600">{subject.code || '—'}</td>
+                  <td className="px-3 py-2">
+                    {subject.color ? (
+                      <span
+                        className="inline-flex h-4 w-4 rounded-full border border-slate-200"
+                        style={{ backgroundColor: subject.color }}
+                      />
+                    ) : (
+                      '—'
+                    )}
+                  </td>
                   <td className="px-3 py-2 text-right space-x-3">
                     <button className="text-sm text-slate-600 hover:text-slate-900" type="button" onClick={() => onEdit(subject)}>
                       Editar

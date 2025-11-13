@@ -11,3 +11,11 @@ pydantic-settings
 onnxruntime
 transformers
 torch
+matplotlib
+seaborn
+plotly
+bokeh
+Matplotlib
+Seaborn
+Plotly
+Bokeh

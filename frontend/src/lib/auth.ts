@@ -10,6 +10,7 @@ export type BackendUser = {
   school_id?: number | null
   classroom_id?: number | null
   subject_id?: number | null
+  teachable_subject_ids?: number[]
 }
 
 export function saveToken(token: string) {

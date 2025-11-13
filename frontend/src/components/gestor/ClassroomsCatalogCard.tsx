@@ -69,6 +69,17 @@ export function ClassroomsCatalogCard({
           />
         </div>
         <div className="space-y-2">
+          <label className="label" htmlFor="classroom_grade">Série/Ano</label>
+          <input
+            id="classroom_grade"
+            className="input"
+            value={form.grade_level}
+            onChange={(event) => onChange({ grade_level: event.target.value })}
+            disabled={submitting}
+            placeholder="Ex.: 7º Ano, 1º Médio..."
+          />
+        </div>
+        <div className="space-y-2">
           <label className="label" htmlFor="classroom_school">Unidade</label>
           {visibleSchools.length > 1 ? (
             <select
@@ -145,6 +156,7 @@ export function ClassroomsCatalogCard({
               <tr>
                 <th className="px-3 py-2">Nome</th>
                 <th className="px-3 py-2">Unidade</th>
+                <th className="px-3 py-2">Série</th>
                 <th className="px-3 py-2">Matérias</th>
                 <th className="px-3 py-2">Código</th>
                 <th className="px-3 py-2 text-right">Ações</th>
@@ -155,6 +167,7 @@ export function ClassroomsCatalogCard({
                 <tr key={classroom.id}>
                   <td className="px-3 py-2 font-medium text-slate-900">{classroom.name}</td>
                   <td className="px-3 py-2 text-slate-600">{schoolMap[classroom.school_id]?.name ?? '—'}</td>
+                  <td className="px-3 py-2 text-slate-600">{classroom.grade_level || '—'}</td>
                   <td className="px-3 py-2 text-slate-600">
                     {classroom.subject_ids?.length ? (
                       <div className="flex flex-wrap gap-1">

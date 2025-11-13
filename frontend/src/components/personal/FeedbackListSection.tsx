@@ -14,6 +14,13 @@ type FeedbackListSectionProps = {
   onFilterChange?: (filter: SentimentFilter) => void
   hideClassification?: boolean
   onRefresh?: () => void
+  onDeleteItem?: (feedback: FeedbackPublic) => void
+  deleteLabel?: string
+  actionStatus?: string | null
+  onSecondaryAction?: (feedback: FeedbackPublic) => void
+  secondaryActionLabel?: string
+  secondaryActionDisabled?: boolean
+  showTriggerBadge?: boolean
 }
 
 const FILTER_OPTIONS: Array<{ id: SentimentFilter; label: string }> = [
@@ -35,6 +42,13 @@ export function FeedbackListSection({
   onFilterChange,
   hideClassification,
   onRefresh,
+  onDeleteItem,
+  deleteLabel = 'Remover',
+  actionStatus,
+  onSecondaryAction,
+  secondaryActionLabel = 'Ação',
+  secondaryActionDisabled = false,
+  showTriggerBadge = true,
 }: FeedbackListSectionProps) {
   return (
     <section className="card p-6 space-y-4">
@@ -67,6 +81,7 @@ export function FeedbackListSection({
       </div>
 
       {loading && <p className="text-sm text-slate-500">Carregando feedbacks...</p>}
+      {actionStatus && <p className="text-xs text-slate-500">{actionStatus}</p>}
       {!loading && infoMessage && <p className="text-sm text-slate-500">{infoMessage}</p>}
       {!loading && items.length === 0 && !infoMessage && (
         <p className="text-sm text-slate-500">{emptyMessage}</p>
@@ -75,7 +90,37 @@ export function FeedbackListSection({
       {!loading && items.length > 0 && (
         <div className="grid gap-4">
           {items.map((feedback) => (
-            <FeedbackCard key={feedback.id} feedback={feedback} badge={badgeLabel} hideClassification={hideClassification} />
+            <div key={feedback.id} className="flex flex-col gap-3">
+              <FeedbackCard
+                feedback={feedback}
+                badge={badgeLabel}
+                hideClassification={hideClassification}
+                showTriggerBadge={showTriggerBadge}
+              />
+              {(onSecondaryAction || onDeleteItem) && (
+                <div className="flex justify-end gap-3">
+                  {onSecondaryAction && (
+                    <button
+                      type="button"
+                      className="text-xs text-amber-600 hover:text-amber-800"
+                      onClick={() => onSecondaryAction(feedback)}
+                      disabled={secondaryActionDisabled}
+                    >
+                      {secondaryActionLabel}
+                    </button>
+                  )}
+                  {onDeleteItem && (
+                    <button
+                      type="button"
+                      className="text-xs text-rose-600 hover:text-rose-800"
+                      onClick={() => onDeleteItem(feedback)}
+                    >
+                      {deleteLabel}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           ))}
         </div>
       )}

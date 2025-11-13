@@ -5,17 +5,25 @@ import type {
   AdminUserCreateInput,
   AdminUserUpdateInput,
   Classroom,
+  ClassroomAssignments,
   ClassroomCreateInput,
   DirectoryUser,
   FeedbackCreateInput,
   FeedbackMineResponse,
   FeedbackPublic,
+  FeedbackReportInput,
   FeedbackSummary,
+  AdminMetricsOverview,
+  AdminHealthMetrics,
   School,
   SchoolCreateInput,
   Subject,
   SubjectCreateInput,
+  TriggerKeyword,
+  TriggerKeywordInput,
 } from './types'
+
+export type ApiError = Error & { status?: number }
 
 const BASE_URL = API_BASE_URL.replace(/\/$/, '')
 
@@ -49,7 +57,11 @@ async function authFetch<T>(path: string, options: RequestInit = {}): Promise<T>
 
   if (!response.ok) {
     const detail = await parseErrorMessage(response)
-    throw new Error(detail)
+    const error: ApiError = new Error(
+      detail || (response.status === 409 ? 'Não é possível concluir: existem vínculos dependentes.' : 'Não foi possível completar a operação.'),
+    )
+    error.status = response.status
+    throw error
   }
 
   if (response.status === 204) {
@@ -92,8 +104,11 @@ export function fetchMyFeedbacks() {
   return authFetch<FeedbackMineResponse>('/api/v1/feedback/mine')
 }
 
-export function fetchAllFeedbacks() {
-  return authFetch<FeedbackPublic[]>('/api/v1/feedback/admin/all')
+export function fetchAllFeedbacks(params: { school_id?: number } = {}) {
+  const search = new URLSearchParams()
+  if (params.school_id) search.set('school_id', String(params.school_id))
+  const query = search.toString()
+  return authFetch<FeedbackPublic[]>(`/api/v1/feedback/admin/all${query ? `?${query}` : ''}`)
 }
 
 export function createFeedback(payload: FeedbackCreateInput) {
@@ -127,6 +142,14 @@ export function fetchUsers(
 
 export function fetchUsersByRole(role: AdminRole) {
   return fetchUsers({ role, limit: 200 })
+}
+
+export function fetchAvailableSubjects() {
+  return authFetch<Subject[]>('/api/v1/feedback/available/subjects')
+}
+
+export function fetchAvailableClassrooms() {
+  return authFetch<Classroom[]>('/api/v1/feedback/available/classrooms')
 }
 
 export function createAdminUser(payload: AdminUserCreateInput) {
@@ -223,6 +246,17 @@ export function updateClassroom(classroomId: number, payload: ClassroomCreateInp
   })
 }
 
+export function fetchClassroomAssignments(classroomId: number) {
+  return authFetch<ClassroomAssignments>(`/api/v1/admin/assignments/${classroomId}`)
+}
+
+export function updateClassroomAssignments(classroomId: number, payload: ClassroomAssignments) {
+  return authFetch<ClassroomAssignments>(`/api/v1/admin/assignments/${classroomId}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  })
+}
+
 export function deleteClassroom(classroomId: number) {
   return authFetch<void>(`/api/v1/admin/classrooms/${classroomId}`, {
     method: 'DELETE',
@@ -247,4 +281,56 @@ export function deleteAllFeedbacks() {
 
 export function deleteFeedback(feedbackId: number) {
   return authFetch<void>(`/api/v1/feedback/admin/${feedbackId}`, { method: 'DELETE' })
+}
+
+export function fetchTriggerAlerts(params: { school_id?: number; include_resolved?: boolean } = {}) {
+  const search = new URLSearchParams()
+  if (params.school_id) search.set('school_id', String(params.school_id))
+  if (params.include_resolved) search.set('include_resolved', 'true')
+  const query = search.toString()
+  return authFetch<FeedbackPublic[]>(`/api/v1/feedback/triggers${query ? `?${query}` : ''}`)
+}
+
+export function deleteMyFeedback(feedbackId: number) {
+  return authFetch<void>(`/api/v1/feedback/${feedbackId}`, { method: 'DELETE' })
+}
+
+export function fetchTriggerKeywords(params: { school_id?: number } = {}) {
+  const search = new URLSearchParams()
+  if (params.school_id) search.set('school_id', String(params.school_id))
+  const query = search.toString()
+  return authFetch<TriggerKeyword[]>(`/api/v1/admin/trigger_keywords${query ? `?${query}` : ''}`)
+}
+
+export function createTriggerKeyword(payload: TriggerKeywordInput) {
+  return authFetch<TriggerKeyword>('/api/v1/admin/trigger_keywords', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function deleteTriggerKeyword(keywordId: number) {
+  return authFetch<void>(`/api/v1/admin/trigger_keywords/${keywordId}`, { method: 'DELETE' })
+}
+
+export function reportFeedback(feedbackId: number, payload: FeedbackReportInput) {
+  return authFetch<FeedbackPublic>(`/api/v1/feedback/${feedbackId}/report`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function resolveTriggerAlert(feedbackId: number, note?: string) {
+  return authFetch<FeedbackPublic>(`/api/v1/feedback/triggers/${feedbackId}/resolve`, {
+    method: 'POST',
+    body: JSON.stringify({ note }),
+  })
+}
+
+export function fetchAdminMetricsOverview() {
+  return authFetch<AdminMetricsOverview>('/api/v1/admin/metrics/overview')
+}
+
+export function fetchAdminHealthMetrics() {
+  return authFetch<AdminHealthMetrics>('/api/v1/admin/metrics/health')
 }

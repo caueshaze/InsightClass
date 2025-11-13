@@ -4,6 +4,7 @@ type FeedbackCardProps = {
   feedback: FeedbackPublic
   badge?: string
   hideClassification?: boolean
+  showTriggerBadge?: boolean
 }
 
 const SENTIMENT_STYLES: Record<
@@ -27,7 +28,12 @@ const SENTIMENT_STYLES: Record<
   },
 }
 
-export function FeedbackCard({ feedback, badge, hideClassification }: FeedbackCardProps) {
+export function FeedbackCard({
+  feedback,
+  badge,
+  hideClassification,
+  showTriggerBadge = true,
+}: FeedbackCardProps) {
   const timestamp = new Date(feedback.created_at)
   const sentimentKey = (feedback.sentiment_label || feedback.sentiment || '').toLowerCase()
   const sentimentStyle =
@@ -39,7 +45,12 @@ export function FeedbackCard({ feedback, badge, hideClassification }: FeedbackCa
       : null
 
   const senderLabel = feedback.sender_name || `Remetente #${feedback.sender_id.slice(0, 6)}`
-  const targetLabel = feedback.target_name || `Destinatário #${feedback.target_id.slice(0, 6)}`
+  const targetLabel =
+    feedback.target_type === 'class'
+      ? `Turma · ${feedback.target_name || `#${feedback.target_id}`}`
+      : feedback.target_type === 'subject'
+        ? `Matéria · ${feedback.target_name || `#${feedback.target_id}`}`
+        : feedback.target_name || `Destinatário #${feedback.target_id.slice(0, 6)}`
 
   return (
     <div className="p-4 border rounded-2xl bg-white">
@@ -67,9 +78,19 @@ export function FeedbackCard({ feedback, badge, hideClassification }: FeedbackCa
             Categoria: {feedback.category}
           </span>
         )}
-        {feedback.has_trigger && (
+        {showTriggerBadge && feedback.has_trigger && (
           <span className="px-3 py-0.5 rounded-full bg-rose-100 text-rose-700">
             Possível gatilho
+          </span>
+        )}
+        {showTriggerBadge && feedback.manual_trigger_reason && (
+          <span className="px-3 py-0.5 rounded-full bg-amber-100 text-amber-800">
+            Reportado: {feedback.manual_trigger_reason}
+          </span>
+        )}
+        {showTriggerBadge && feedback.trigger_resolved_at && (
+          <span className="px-3 py-0.5 rounded-full bg-emerald-50 text-emerald-700">
+            Resolvido
           </span>
         )}
       </div>

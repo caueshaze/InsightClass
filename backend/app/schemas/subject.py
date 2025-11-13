@@ -9,10 +9,8 @@ class SubjectBase(BaseModel):
         default=None, max_length=64, description="Código opcional para integrações"
     )
     school_id: int = Field(..., description="ID da unidade escolar")
-    teacher_id: str | None = Field(
-        default=None,
-        description="ID do professor responsável (opcional)",
-    )
+    color: str | None = Field(default=None, max_length=16)
+    description: str | None = Field(default=None, max_length=255)
 
 
 class SubjectCreate(SubjectBase):

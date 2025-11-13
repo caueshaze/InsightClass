@@ -1,81 +1,90 @@
-import { FormEvent, useEffect, useState } from 'react'
+import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+
 import { Navbar } from '../components/layout/Navbar'
 import { Footer } from '../components/layout/Footer'
 
-const steps = [
+const heroHighlights = [
+  { label: 'IA contextual', description: 'Classificação automática de sentimento, tema e urgência.' },
+  { label: 'Governança', description: 'Fluxos seguros entre alunos, professores e gestores.' },
+  { label: 'Alertas inteligentes', description: 'Detecção de gatilhos, abusos e linguagem tóxica.' },
+]
+
+const journey = [
   {
-    title: 'Coleta de feedbacks',
-    description:
-      'Alunos, professores e gestores registram feedbacks estruturados com contexto de turma, matéria e destino.',
+    title: 'Captura estruturada',
+    copy: 'Alunos e professores enviam feedbacks vinculados a turmas, matérias e destinatários.',
   },
   {
     title: 'Análise inteligente',
-    description:
-      'Modelos de IA classificam sentimento, tema e urgência enquanto detectam linguagem tóxica e gatilhos.',
+    copy: 'Modelos proprietários classificam cada relato, detectam gatilhos e priorizam riscos.',
   },
   {
-    title: 'Insights para ação',
-    description:
-      'Dashboards por papel entregam recomendações e resumos para decisões mais rápidas e seguras.',
+    title: 'Ação coordenada',
+    copy: 'Dashboards por papel e alertas resolvidos garantem resposta rápida e rastreável.',
   },
 ]
 
-const personas = [
+const modules = [
   {
-    title: 'Alunos',
+    title: 'Painel do Gestor',
     description:
-      'Relatam conquistas e desafios com segurança, inclusive de forma anônima quando necessário.',
+      'Indicadores em tempo real, ranking de elogios/pressões, catálogo de usuários e centro de segurança.',
   },
   {
-    title: 'Professores',
+    title: 'Workspace do Professor',
     description:
-      'Recebem feedbacks organizados por turma/matéria e respondem priorizando o que importa.',
+      'Inbox organizada por turma/matéria, composer rápido, relatórios de IA e botão para reportar gatilhos.',
   },
   {
-    title: 'Gestores',
+    title: 'App do Aluno',
     description:
-      'Visualizam tendências, riscos e oportunidades em tempo real para apoiar toda a rede.',
+      'Envio guiado e sigiloso, histórico pessoal e resumos amigáveis com sugestões de melhoria.',
   },
 ]
 
-const resources = [
-  'Envio estruturado de feedbacks entre alunos, professores, gestores, turmas e matérias.',
-  'Resumo dos últimos feedbacks com IA para cada papel.',
-  'Detecção de linguagem tóxica e gatilhos (bullying, abuso, ameaças, etc.).',
-  'Controles de permissão robustos por papel (admin, gestor, professor, aluno).',
+const resourcePillars = [
+  'Criptografia ponta a ponta e segregação rígida por papel.',
+  'Modelos ONNX + LLMs gemma para resumir e priorizar.',
+  'Centro de alertas com workflow de resolução auditável.',
+  'Governança completa: unidades, matérias, turmas e diretório.',
 ]
 
-const faqItems = [
+const testimonials = [
   {
-    question: 'Como o InsightClass protege os dados?',
-    answer:
-      'Aplicamos criptografia ponta a ponta e controles de acesso por papel. Somente quem tem permissão vê o conteúdo.',
+    quote:
+      '“Conseguimos antecipar conflitos e apoiar professores com dados confiáveis. InsightClass virou nossa sala de situação diária.”',
+    name: 'Laura Monteiro',
+    title: 'Diretora pedagógica · Rede Horizonte',
   },
   {
-    question: 'Posso usar com minha estrutura atual?',
+    quote:
+      '“Os alertas inteligentes e o registro centralizado reduziram o tempo de resposta em 60%. Nunca tivemos tanta visibilidade.”',
+    name: 'Daniel Costa',
+    title: 'Coordenador socioemocional · Colégio Prisma',
+  },
+]
+
+const faq = [
+  {
+    question: 'InsightClass substitui o canal de ouvidoria?',
     answer:
-      'Sim. Basta importar usuários e turmas via planilha ou integração com o seu sistema acadêmico.',
+      'Não. Ele complementa com fluxo estruturado, registro seguro e análises de IA que priorizam o que precisa de resposta imediata.',
   },
   {
-    question: 'A IA substitui a equipe pedagógica?',
+    question: 'É possível operar várias escolas ou redes?',
     answer:
-      'Não. Ela apenas prioriza e resume feedbacks para liberar tempo e apoiar decisões humanas.',
+      'Sim, o backend é multi-escola e suporta mantenedoras, secretarias ou grupos privados com perfis e acessos segregados.',
   },
   {
-    question: 'Há suporte para múltiplas escolas e redes?',
+    question: 'Quais integrações estão disponíveis?',
     answer:
-      'InsightClass nasceu multi-escola e multi-rede, ideal para mantenedoras e secretarias.',
+      'Importação via CSV, API REST, Single Sign-On e sincronização com LMS/Google Workspace fazem parte do roadmap próximo.',
   },
   {
-    question: 'O que acontece com denúncias graves?',
+    question: 'Como tratam dados sensíveis?',
     answer:
-      'O sistema identifica gatilhos automaticamente e notifica os responsáveis definidos pela instituição.',
-  },
-  {
-    question: 'Quais integrações futuras estão previstas?',
-    answer:
-      'API pública, SSO e sincronização com LMS/Google Workspace estão no roadmap próximo.',
+      'Tudo é criptografado, auditado e retido segundo políticas da instituição. Há trilha completa de acesso, resolução e exclusão.',
   },
 ]
 
@@ -86,165 +95,216 @@ export default function LandingPage() {
   useEffect(() => {
     if (!location.hash) return
     const target = location.hash.replace('#', '')
-    const scroll = () => {
-      const element = document.getElementById(target)
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth' })
-      }
-    }
-    requestAnimationFrame(scroll)
+    requestAnimationFrame(() => {
+      document.getElementById(target)?.scrollIntoView({ behavior: 'smooth' })
+    })
   }, [location.hash])
 
   const handleContactSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    setContactStatus('Recebemos sua mensagem! Entraremos em contato em breve.')
+    setContactStatus('Recebemos sua mensagem! Retornaremos em breve.')
     event.currentTarget.reset()
   }
 
+  const heroStats = useMemo(
+    () => [
+      { value: '24h', label: 'Tempo médio para resolver alertas críticos' },
+      { value: '92%', label: 'Feedbacks respondidos no prazo com IA' },
+      { value: '+18k', label: 'Relatos analisados em redes parceiras' },
+    ],
+    [],
+  )
+
   return (
-    <div className="bg-gradient-to-b from-white via-slate-50 to-slate-100 text-slate-900">
+    <div className="bg-slate-950 text-slate-100 min-h-screen">
       <Navbar />
       <main>
         <section
           id="inicio"
-          className="max-w-6xl mx-auto px-4 py-16 md:py-24 grid gap-12 md:grid-cols-2 items-center"
+          className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900"
         >
-          <div>
-            <p className="text-sm uppercase tracking-wide text-slate-500 font-semibold">
-              Plataforma InsightClass
-            </p>
-            <h1 className="text-4xl md:text-5xl font-semibold text-slate-900 mt-4 leading-tight">
-              InsightClass — plataforma de análise inteligente de feedbacks escolares.
-            </h1>
-            <p className="text-lg text-slate-600 mt-6">
-              Organize, analise e responda feedbacks de toda a comunidade escolar com IA,
-              mantendo contexto, segurança e visibilidade adequada para cada papel.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 mt-8">
-              <Link
-                to="/login"
-                className="px-6 py-3 rounded-full bg-slate-900 text-white font-medium text-center hover:bg-slate-800"
-              >
-                Entrar
-              </Link>
-              <a
-                href="#contato"
-                className="px-6 py-3 rounded-full border border-slate-300 text-slate-900 font-medium text-center hover:border-slate-500"
-              >
-                Falar com o time
-              </a>
-            </div>
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute -top-32 right-10 h-80 w-80 rounded-full bg-rose-500/20 blur-[120px]" />
+            <div className="absolute -bottom-20 left-0 h-72 w-72 rounded-full bg-sky-500/20 blur-[120px]" />
           </div>
-          <div className="bg-white/80 border border-slate-200 rounded-3xl shadow-xl p-8">
-            <p className="text-sm text-slate-500 font-medium">O que você acompanha</p>
-            <ul className="mt-4 space-y-4">
-              {[
-                'Feedbacks críticos destacados automaticamente.',
-                'Resumo semanal por papel com IA Gemma.',
-                'Alertas de linguagem tóxica e gatilhos sensíveis.',
-                'Fluxo completo de envio e resposta entre papéis.',
-              ].map((item) => (
-                <li key={item} className="flex items-start gap-3">
-                  <span className="h-6 w-6 rounded-full bg-slate-900 text-white grid place-items-center text-sm mt-1">
-                    ✓
-                  </span>
-                  <span className="text-slate-600">{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-
-        <section id="como-funciona" className="py-16 bg-white">
-          <div className="max-w-6xl mx-auto px-4">
-            <div className="text-center max-w-2xl mx-auto">
-              <p className="text-sm font-semibold text-slate-500">Como funciona</p>
-              <h2 className="text-3xl font-semibold mt-2">Três etapas para transformar feedbacks</h2>
+          <div className="max-w-6xl mx-auto px-4 py-20 relative z-10 grid gap-12 md:grid-cols-[1.1fr_0.9fr] items-center">
+            <div className="space-y-8">
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/20 px-4 py-1 text-xs tracking-[0.25em] uppercase">
+                InsightClass · Plataforma de Feedbacks
+              </span>
+              <div className="space-y-5">
+                <h1 className="text-4xl md:text-5xl font-semibold leading-tight text-white">
+                  Inteligência para o clima escolar, com segurança e governança ponta a ponta.
+                </h1>
+                <p className="text-lg text-slate-300">
+                  Automatize a jornada de feedbacks entre alunos, professores e gestores. Detecte
+                  gatilhos críticos, responda com prioridade e gere relatórios executivos em minutos.
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Link
+                  to="/login"
+                  className="px-6 py-3 rounded-full bg-white text-slate-900 font-semibold text-center hover:bg-slate-100 transition"
+                >
+                  Acessar plataforma
+                </Link>
+                <a
+                  href="#contato"
+                  className="px-6 py-3 rounded-full border border-white/30 text-white text-center hover:bg-white/10 transition"
+                >
+                  Falar com o time
+                </a>
+              </div>
+              <div className="grid gap-4 md:grid-cols-3">
+                {heroHighlights.map((item) => (
+                  <div key={item.label} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <p className="text-sm font-semibold text-white">{item.label}</p>
+                    <p className="text-xs text-slate-200 mt-1">{item.description}</p>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="grid md:grid-cols-3 gap-6 mt-12">
-              {steps.map((step, index) => (
-                <div key={step.title} className="card p-6">
-                  <span className="text-sm font-semibold text-slate-500">Passo {index + 1}</span>
-                  <h3 className="text-xl font-semibold mt-2">{step.title}</h3>
-                  <p className="text-sm text-slate-600 mt-2">{step.description}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section id="publico" className="py-16">
-          <div className="max-w-6xl mx-auto px-4 grid gap-8">
-            <div className="text-center max-w-2xl mx-auto">
-              <p className="text-sm font-semibold text-slate-500">Para quem é</p>
-              <h2 className="text-3xl font-semibold mt-2">Cada papel recebe informação no formato ideal</h2>
-            </div>
-            <div className="grid md:grid-cols-3 gap-6">
-              {personas.map((persona) => (
-                <div key={persona.title} className="card p-6">
-                  <h3 className="text-xl font-semibold">{persona.title}</h3>
-                  <p className="text-sm text-slate-600 mt-3">{persona.description}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section id="recursos" className="py-16 bg-white">
-          <div className="max-w-6xl mx-auto px-4 grid gap-8 md:grid-cols-2 items-center">
-            <div>
-              <p className="text-sm font-semibold text-slate-500">Recursos</p>
-              <h2 className="text-3xl font-semibold mt-2">Tudo o que você precisa para orquestrar feedbacks</h2>
-              <p className="text-slate-600 mt-4">
-                InsightClass combina fluxo operacional completo, modelos proprietários e governança
-                de dados para sua rede escolar.
+            <div className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur p-8 space-y-6 shadow-2xl">
+              <p className="text-sm uppercase tracking-wide text-slate-300">Indicadores em tempo real</p>
+              <div className="grid gap-6">
+                {heroStats.map((stat) => (
+                  <div key={stat.label}>
+                    <p className="text-4xl font-semibold text-white">{stat.value}</p>
+                    <p className="text-sm text-slate-300">{stat.label}</p>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-slate-400">
+                Dados fictícios para demonstração. Personalize com métricas reais da sua rede.
               </p>
             </div>
-            <ul className="bg-slate-900 text-white rounded-3xl p-8 space-y-4">
-              {resources.map((item) => (
-                <li key={item} className="flex gap-3">
-                  <span className="text-slate-300 text-xl">•</span>
-                  <span>{item}</span>
+          </div>
+        </section>
+
+        <section className="py-16 bg-slate-950/95" id="como-funciona">
+          <div className="max-w-5xl mx-auto px-4 grid gap-10">
+            <header className="text-center space-y-3">
+              <p className="text-sm font-semibold text-rose-300 uppercase tracking-wide">
+                Um fluxo completo
+              </p>
+              <h2 className="text-3xl font-semibold text-white">Da denúncia ao insight acionável</h2>
+              <p className="text-slate-300">
+                InsightClass cuida de toda a jornada, mantendo trilha de auditoria e contexto para cada
+                papel.
+              </p>
+            </header>
+            <div className="grid gap-6 md:grid-cols-3">
+              {journey.map((stage, index) => (
+                <article key={stage.title} className="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-3">
+                  <span className="text-xs font-semibold text-slate-300">Etapa {index + 1}</span>
+                  <h3 className="text-xl font-semibold text-white">{stage.title}</h3>
+                  <p className="text-sm text-slate-300">{stage.copy}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="recursos" className="py-16 bg-white text-slate-900">
+          <div className="max-w-6xl mx-auto px-4 space-y-10">
+            <header className="text-center space-y-3">
+              <p className="text-sm font-semibold text-slate-500 uppercase tracking-wide">Módulos</p>
+              <h2 className="text-3xl font-semibold">Experiências pensadas para cada papel</h2>
+              <p className="text-slate-600 max-w-2xl mx-auto">
+                Personalize fluxos por segmento e mantenha o contexto certo para alunos, professores e
+                gestores.
+              </p>
+            </header>
+            <div className="grid gap-6 md:grid-cols-3">
+              {modules.map((module) => (
+                <article key={module.title} className="rounded-3xl border border-slate-200 bg-white shadow-sm p-6 space-y-3">
+                  <h3 className="text-xl font-semibold">{module.title}</h3>
+                  <p className="text-sm text-slate-600">{module.description}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="seguranca" className="py-16 bg-slate-950 text-slate-100">
+          <div className="max-w-6xl mx-auto px-4 grid gap-8 md:grid-cols-2 items-center">
+            <div>
+              <p className="text-sm font-semibold text-rose-200 uppercase tracking-wide">Segurança</p>
+              <h2 className="text-3xl font-semibold mt-2">Camadas de proteção e governança</h2>
+              <p className="text-slate-300 mt-4">
+                Roles baseados em contexto, criptografia ponta a ponta e workflow de alertas garantem
+                respostas seguras sem bloquear a operação pedagógica.
+              </p>
+            </div>
+            <ul className="space-y-4">
+              {resourcePillars.map((pillar) => (
+                <li key={pillar} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <p className="text-sm text-slate-100">{pillar}</p>
                 </li>
               ))}
             </ul>
           </div>
         </section>
 
-        <section id="faq" className="py-16">
-          <div className="max-w-6xl mx-auto px-4">
-            <div className="text-center max-w-2xl mx-auto">
-              <p className="text-sm font-semibold text-slate-500">FAQ</p>
-              <h2 className="text-3xl font-semibold mt-2">Perguntas frequentes</h2>
-            </div>
-            <div className="mt-10 grid gap-6 md:grid-cols-2">
-              {faqItems.map((item) => (
-                <div key={item.question} className="card p-6">
-                  <h3 className="text-lg font-semibold">{item.question}</h3>
-                  <p className="text-sm text-slate-600 mt-2">{item.answer}</p>
-                </div>
+        <section id="depoimentos" className="py-16 bg-white text-slate-900">
+          <div className="max-w-5xl mx-auto px-4 space-y-8">
+            <header className="text-center space-y-3">
+              <p className="text-sm font-semibold text-slate-500 uppercase tracking-wide">
+                Evidências
+              </p>
+              <h2 className="text-3xl font-semibold">Quem já utiliza InsightClass</h2>
+            </header>
+            <div className="grid gap-6 md:grid-cols-2">
+              {testimonials.map((item) => (
+                <blockquote
+                  key={item.name}
+                  className="rounded-3xl border border-slate-200 bg-slate-50 p-6 space-y-4"
+                >
+                  <p className="text-slate-700 leading-relaxed">{item.quote}</p>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">{item.name}</p>
+                    <p className="text-xs text-slate-500">{item.title}</p>
+                  </div>
+                </blockquote>
               ))}
             </div>
           </div>
         </section>
 
-        <section id="contato" className="py-16 bg-white">
-          <div className="max-w-4xl mx-auto px-4 grid gap-8 md:grid-cols-2 items-start">
-            <div>
-              <p className="text-sm font-semibold text-slate-500">Contato</p>
-              <h2 className="text-3xl font-semibold mt-2">Fale com o time InsightClass</h2>
-              <p className="text-slate-600 mt-4">
-                Agende uma demonstração ou envie dúvidas sobre integrações, segurança e roadmap.
-                Responderemos em até um dia útil.
+        <section id="faq" className="py-16 bg-slate-950 text-slate-100">
+          <div className="max-w-6xl mx-auto px-4 space-y-10">
+            <header className="text-center space-y-3">
+              <p className="text-sm font-semibold text-rose-200 uppercase tracking-wide">FAQ</p>
+              <h2 className="text-3xl font-semibold text-white">Perguntas frequentes</h2>
+            </header>
+            <div className="grid gap-6 md:grid-cols-2">
+              {faq.map((item) => (
+                <article key={item.question} className="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-2">
+                  <h3 className="text-lg font-semibold text-white">{item.question}</h3>
+                  <p className="text-sm text-slate-200">{item.answer}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="contato" className="py-16 bg-white text-slate-900">
+          <div className="max-w-5xl mx-auto px-4 grid gap-8 md:grid-cols-2 items-start">
+            <div className="space-y-4">
+              <p className="text-sm font-semibold text-slate-500 uppercase tracking-wide">Contato</p>
+              <h2 className="text-3xl font-semibold">Agende uma demonstração</h2>
+              <p className="text-slate-600">
+                Compartilhe o contexto da sua rede para receber um plano de atuação, cronograma e
+                estimativa de rollout.
               </p>
               <a
                 href="mailto:contato@insightclass.dev"
-                className="inline-flex items-center gap-2 mt-6 text-slate-900 font-medium"
+                className="inline-flex items-center gap-2 text-slate-900 font-semibold hover:text-rose-600"
               >
                 contato@insightclass.dev
               </a>
             </div>
-            <form className="card p-6 grid gap-4" onSubmit={handleContactSubmit}>
+            <form className="rounded-3xl border border-slate-200 bg-slate-50 p-6 grid gap-4" onSubmit={handleContactSubmit}>
               <div>
                 <label htmlFor="contact-name" className="label">
                   Nome
@@ -260,19 +320,19 @@ export default function LandingPage() {
                   name="email"
                   className="input"
                   type="email"
-                  placeholder="voce@escola.com"
+                  placeholder="voce@instituicao.com"
                   required
                 />
               </div>
               <div>
                 <label htmlFor="contact-message" className="label">
-                  Mensagem
+                  Como podemos ajudar?
                 </label>
                 <textarea
                   id="contact-message"
                   name="message"
                   className="input h-28"
-                  placeholder="Conte-nos sobre suas necessidades..."
+                  placeholder="Conte-nos sobre sua necessidade..."
                   required
                 />
               </div>

@@ -11,8 +11,8 @@ class ClassroomBase(BaseModel):
         description="Código ou identificador interno da turma",
     )
     school_id: int = Field(..., description="ID da unidade escolar")
-    subject_id: int | None = Field(
-        default=None, description="ID da matéria principal da turma"
+    grade_level: str | None = Field(
+        default=None, description="Série ou ano da turma"
     )
     subject_ids: list[int] = Field(
         default_factory=list, description="IDs das matérias vinculadas à turma"

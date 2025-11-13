@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import Header from '../components/Header'
 import { useAuth } from '../context/AuthContext'
@@ -10,7 +10,6 @@ import {
   type UserFormState,
 } from '../hooks/useGestorDirectory'
 import { PersonalHero } from '../components/personal/PersonalHero'
-import { GestorWelcome } from '../components/gestor/GestorWelcome'
 import { GestorOverviewSection } from '../components/gestor/GestorOverviewSection'
 import { FeedbackComposer } from '../components/feedback/FeedbackComposer'
 import { InsightSummaryCard } from '../components/gestor/InsightSummaryCard'
@@ -20,29 +19,66 @@ import { UsersTableCard } from '../components/gestor/UsersTableCard'
 import { SchoolsCatalogCard } from '../components/gestor/SchoolsCatalogCard'
 import { SubjectsCatalogCard } from '../components/gestor/SubjectsCatalogCard'
 import { ClassroomsCatalogCard } from '../components/gestor/ClassroomsCatalogCard'
+import { ClassroomAssignmentsPanel } from '../components/gestor/ClassroomAssignmentsPanel'
 import { deleteFeedback } from '../lib/api'
+import { useTriggerAlerts } from '../hooks/useTriggerAlerts'
+import { useTriggerKeywords } from '../hooks/useTriggerKeywords'
+import { TriggerKeywordsCard } from '../components/alerts/TriggerKeywordsCard'
+import { TriggerAlertFeed } from '../components/alerts/TriggerAlertFeed'
+import { GestorAnalyticsPanel } from '../components/gestor/GestorAnalyticsPanel'
+import { UserProfileDrawer } from '../components/gestor/UserProfileDrawer'
+import type { FeedbackPublic } from '../lib/types'
 
 type ManagementSection =
-  | 'welcome'
   | 'overview'
   | 'compose'
   | 'insights'
   | 'feedbacks'
+  | 'alerts'
   | 'directory'
   | 'schools'
   | 'subjects'
   | 'classrooms'
+  | 'teachers'
+  | 'students'
+  | 'managers'
+  | 'assignments'
 
-const BASE_SECTIONS: Array<{ id: ManagementSection; label: string; icon: string }> = [
-  { id: 'welcome', label: 'Início', icon: '👋' },
-  { id: 'overview', label: 'Indicadores', icon: '📊' },
-  { id: 'compose', label: 'Enviar comunicado', icon: '✉️' },
-  { id: 'insights', label: 'Análise IA', icon: '✨' },
-  { id: 'feedbacks', label: 'Todos os feedbacks', icon: '📋' },
-  { id: 'directory', label: 'Usuários', icon: '🧑‍🤝‍🧑' },
-  { id: 'schools', label: 'Unidades', icon: '🏫' },
-  { id: 'subjects', label: 'Matérias', icon: '📚' },
-  { id: 'classrooms', label: 'Turmas', icon: '🧾' },
+const NAV_GROUPS: Array<{
+  label: string
+  items: Array<{ id: ManagementSection; label: string; icon: string; adminOnly?: boolean }>
+}> = [
+  {
+    label: 'Visão Geral',
+    items: [
+      { id: 'overview', label: 'Indicadores', icon: '📊' },
+      { id: 'compose', label: 'Enviar comunicado', icon: '✉️' },
+      { id: 'insights', label: 'Análise IA', icon: '✨' },
+      { id: 'feedbacks', label: 'Feedbacks', icon: '📋' },
+      { id: 'alerts', label: 'Alertas', icon: '🚨' },
+    ],
+  },
+  {
+    label: 'Estrutura Escolar',
+    items: [
+      { id: 'subjects', label: 'Matérias', icon: '📚' },
+      { id: 'classrooms', label: 'Turmas', icon: '🧾' },
+      { id: 'schools', label: 'Unidades', icon: '🏫', adminOnly: true },
+    ],
+  },
+  {
+    label: 'Usuários',
+    items: [
+      { id: 'teachers', label: 'Professores', icon: '🧑‍🏫' },
+      { id: 'students', label: 'Alunos', icon: '🎒' },
+      { id: 'managers', label: 'Gestores', icon: '🗂️', adminOnly: true },
+      { id: 'directory', label: 'Todos os usuários', icon: '🧑‍🤝‍🧑' },
+    ],
+  },
+  {
+    label: 'Atribuições',
+    items: [{ id: 'assignments', label: 'Professores por turma', icon: '🧩' }],
+  },
 ]
 
 export default function Gestor() {
@@ -52,14 +88,33 @@ export default function Gestor() {
   const isAdmin = backendRole === 'admin'
   const isManager = backendRole === 'gestor'
 
-  const sections = useMemo(() => {
-    if (isAdmin) return BASE_SECTIONS
-    return BASE_SECTIONS.filter((section) => section.id !== 'schools')
-  }, [isAdmin])
+  const sections = useMemo(
+    () =>
+      NAV_GROUPS.flatMap((group) =>
+        group.items
+          .filter((item) => (isAdmin ? true : !item.adminOnly))
+          .map((item) => ({ ...item, group: group.label })),
+      ),
+    [isAdmin],
+  )
 
-  const [activeSection, setActiveSection] = useState<ManagementSection>('welcome')
+  const [activeSection, setActiveSection] = useState<ManagementSection>('overview')
   const [directoryInitialized, setDirectoryInitialized] = useState(false)
   const [feedbackActionStatus, setFeedbackActionStatus] = useState<string | null>(null)
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
+  const triggerAlerts = useTriggerAlerts(
+    isAdmin ? {} : { schoolId: managerSchoolId ?? undefined },
+  )
+  const resolvedAlerts = useTriggerAlerts({
+    ...(isAdmin ? {} : { schoolId: managerSchoolId ?? undefined }),
+    includeResolved: true,
+    emptyMessage: 'Nenhum alerta resolvido até o momento.',
+  })
+  const triggerKeywords = useTriggerKeywords({
+    isAdmin,
+    schoolId: managerSchoolId,
+    enabled: activeSection === 'alerts',
+  })
 
   const overview = useGestorOverview({ isAdmin, managerSchoolId })
   const directory = useGestorDirectory({ isAdmin, isManager, managerSchoolId })
@@ -74,6 +129,8 @@ export default function Gestor() {
     feedbackPurgeStatus,
     feedbackPurgeLoading,
     stats,
+    analytics,
+    userIndex,
     loadFeedbacks,
     loadSummary,
     handleDeleteAllFeedbacks,
@@ -87,40 +144,131 @@ export default function Gestor() {
     classroomsState,
     referenceData,
   } = directory
+  const roleFilterSetter = usersState.setRoleFilter
 
   useEffect(() => {
     void loadFeedbacks()
   }, [loadFeedbacks])
 
   useEffect(() => {
-    const needsDirectory = ['directory', 'schools', 'subjects', 'classrooms'].includes(activeSection)
+    const needsDirectory = [
+      'directory',
+      'schools',
+      'subjects',
+      'classrooms',
+      'teachers',
+      'students',
+      'managers',
+      'assignments',
+    ].includes(activeSection)
     if (needsDirectory && !directoryInitialized) {
       setDirectoryInitialized(true)
       void initializeDirectory()
     }
   }, [activeSection, directoryInitialized, initializeDirectory])
 
+  useEffect(() => {
+    if (activeSection === 'teachers') {
+      roleFilterSetter('professor')
+    } else if (activeSection === 'students') {
+      roleFilterSetter('aluno')
+    } else if (activeSection === 'managers') {
+      roleFilterSetter('gestor')
+    } else if (activeSection === 'directory') {
+      roleFilterSetter('all')
+    }
+  }, [activeSection, roleFilterSetter])
+
+  const selectedProfile = selectedUserId ? userIndex[selectedUserId] ?? null : null
+
+  const sortByDateDesc = useCallback((list: FeedbackPublic[]) => {
+    return [...list].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    )
+  }, [])
+
+  const selectedProfileSent = useMemo(() => {
+    if (!selectedUserId) return []
+    return sortByDateDesc(feedbacks.filter((feedback) => feedback.sender_id === selectedUserId))
+  }, [selectedUserId, feedbacks, sortByDateDesc])
+
+  const selectedProfileReceived = useMemo(() => {
+    if (!selectedUserId) return []
+    return sortByDateDesc(
+      feedbacks.filter(
+        (feedback) => feedback.target_type === 'user' && feedback.target_id === selectedUserId,
+      ),
+    )
+  }, [selectedUserId, feedbacks, sortByDateDesc])
+
+  const professorDirectory = useMemo(
+    () => usersState.users.filter((user) => user.role === 'professor'),
+    [usersState.users],
+  )
+
+  const handleRoleFilterChange = useCallback(
+    (value: 'all' | 'admin' | 'gestor' | 'professor' | 'aluno') => {
+      if (['teachers', 'students', 'managers'].includes(activeSection)) {
+        return
+      }
+      roleFilterSetter(value)
+    },
+    [activeSection, roleFilterSetter],
+  )
+
+  const handleDeleteSingleFeedback = useCallback(
+    async (feedbackId: number) => {
+      if (!window.confirm('Deseja remover este feedback?')) return
+      setFeedbackActionStatus('Removendo feedback...')
+      try {
+        await deleteFeedback(feedbackId)
+        setFeedbackActionStatus('Feedback removido com sucesso.')
+        await loadFeedbacks()
+        await triggerAlerts.loadAlerts()
+        await resolvedAlerts.loadAlerts()
+      } catch (error: any) {
+        setFeedbackActionStatus(error?.message || 'Não foi possível remover o feedback.')
+      }
+    },
+    [loadFeedbacks, triggerAlerts, resolvedAlerts],
+  )
+
+  const handleOpenProfile = useCallback((userId: string) => {
+    setSelectedUserId(userId)
+  }, [])
+
+  const handleCloseProfile = useCallback(() => {
+    setSelectedUserId(null)
+  }, [])
+
+  const handleResolveAlert = useCallback(
+    (feedback: FeedbackPublic) => {
+      const note = window.prompt('Adicionar observação ao resolver? (opcional)')
+      void (async () => {
+        await triggerAlerts.resolveAlert(feedback.id, note ?? undefined)
+        await resolvedAlerts.loadAlerts()
+      })()
+    },
+    [triggerAlerts, resolvedAlerts],
+  )
+
   const renderSection = () => {
     switch (activeSection) {
-      case 'welcome':
-        return (
-          <GestorWelcome
-            roleLabel={isAdmin ? 'Administrador' : 'Gestor(a)'}
-            onNavigate={setActiveSection}
-            actions={[
-              { id: 'overview', icon: '📊', title: 'Acompanhar indicadores', description: 'Veja como está o clima da rede e os gatilhos monitorados.' },
-              { id: 'directory', icon: '🧑‍🤝‍🧑', title: 'Gerir diretório', description: 'Cadastre novos usuários ou ajuste vínculos existentes.' },
-            ]}
-          />
-        )
       case 'overview':
         return (
-          <GestorOverviewSection
-            stats={stats}
-            loading={feedbacksLoading}
-            notice={feedbacksNotice}
-            onRefresh={loadFeedbacks}
-          />
+          <section className="space-y-6">
+            <GestorOverviewSection
+              stats={stats}
+              loading={feedbacksLoading}
+              notice={feedbacksNotice}
+              onRefresh={loadFeedbacks}
+            />
+            <GestorAnalyticsPanel
+              loading={feedbacksLoading}
+              analytics={analytics}
+              onSelectUser={handleOpenProfile}
+            />
+          </section>
         )
       case 'compose':
         return (
@@ -156,6 +304,72 @@ export default function Gestor() {
             statusMessage={feedbackActionStatus}
           />
         )
+      case 'alerts':
+        return (
+          <section className="space-y-6">
+            <div className="rounded-3xl border border-rose-200 bg-gradient-to-r from-rose-50 via-white to-rose-50 shadow-inner p-6">
+              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-rose-700 flex items-center gap-2">
+                    <span>🛡️</span>
+                    Centro de Segurança
+                  </p>
+                  <h2 className="text-2xl font-bold text-slate-900">
+                    Monitoramento proativo de gatilhos sensíveis
+                  </h2>
+                  <p className="text-sm text-slate-600 max-w-2xl">
+                    Acompanhe as ocorrências classificadas como risco e mantenha a lista de palavras
+                    monitoradas atualizada para atuar rapidamente em situações críticas.
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-slate-500">Ativos</p>
+                    <p className="text-3xl font-bold text-rose-600">{triggerAlerts.alerts.length}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-slate-500 mt-2">Resolvidos</p>
+                    <p className="text-3xl font-bold text-emerald-600">{resolvedAlerts.alerts.length}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="grid gap-6 lg:grid-cols-2">
+              <TriggerKeywordsCard
+                keywords={triggerKeywords.keywords}
+                loading={triggerKeywords.loading}
+                error={triggerKeywords.error}
+                status={triggerKeywords.status}
+                submitting={triggerKeywords.submitting}
+                scopeLabel={isAdmin ? 'toda a rede' : 'a sua unidade'}
+                onAdd={triggerKeywords.handleCreate}
+                onDelete={triggerKeywords.handleDelete}
+              />
+              <TriggerAlertFeed
+                title="Alertas ativos"
+                subtitle="Ocorrências com análise pendente"
+                alerts={triggerAlerts.alerts}
+                loading={triggerAlerts.loading}
+                infoMessage={triggerAlerts.notice}
+                statusMessage={feedbackActionStatus}
+                onRefresh={triggerAlerts.loadAlerts}
+                onDeleteFeedback={isAdmin ? handleDeleteSingleFeedback : undefined}
+                onResolveAlert={handleResolveAlert}
+                resolvingId={triggerAlerts.resolvingId}
+                badgeLabel="Risco ativo"
+              />
+            </div>
+            <TriggerAlertFeed
+              title="Alertas resolvidos"
+              subtitle="Histórico de riscos tratados recentemente"
+              alerts={resolvedAlerts.alerts}
+              loading={resolvedAlerts.loading}
+              infoMessage={resolvedAlerts.notice}
+              onRefresh={resolvedAlerts.loadAlerts}
+              badgeLabel="Resolvido"
+            />
+          </section>
+        )
       case 'directory':
         return (
           <section className="grid gap-6">
@@ -178,7 +392,7 @@ export default function Gestor() {
               loading={usersState.usersLoading}
               error={usersState.usersError}
               roleFilter={usersState.roleFilter}
-              onChangeRoleFilter={usersState.setRoleFilter}
+              onChangeRoleFilter={handleRoleFilterChange}
               onDeleteUser={usersState.handleDeleteUser}
               onEditUser={usersState.startEditUser}
               userActionStatus={usersState.userActionStatus}
@@ -189,6 +403,126 @@ export default function Gestor() {
             />
           </section>
         )
+      case 'teachers': {
+        const hasSubjects = subjectsState.subjects.length > 0
+        return (
+          <section className="grid gap-6">
+            <UserRegistrationCard
+              form={usersState.userForm}
+              onChange={(updates) => usersState.setUserForm((prev: UserFormState) => ({ ...prev, ...updates }))}
+              onSubmit={usersState.handleUserSubmit}
+              submitting={usersState.userFormSubmitting}
+              statusMessage={usersState.userFormStatus}
+              isAdmin={isAdmin}
+              isManager={isManager}
+              visibleSchools={referenceData.visibleSchools}
+              subjects={subjectsState.subjects}
+              classrooms={classroomsState.classrooms}
+              mode={usersState.userFormMode}
+              onCancelEdit={usersState.resetUserForm}
+              allowedRoles={['professor']}
+              disabled={!hasSubjects}
+              disabledReason={
+                hasSubjects
+                  ? null
+                  : 'Antes de cadastrar professores, registre ao menos uma Matéria em "Estrutura Escolar → Matérias".'
+              }
+            />
+            <UsersTableCard
+              users={usersState.filteredUsers}
+              loading={usersState.usersLoading}
+              error={usersState.usersError}
+              roleFilter={usersState.roleFilter}
+              onChangeRoleFilter={handleRoleFilterChange}
+              onDeleteUser={usersState.handleDeleteUser}
+              onEditUser={usersState.startEditUser}
+              userActionStatus={usersState.userActionStatus}
+              sessionUserId={session?.id}
+              schoolMap={referenceData.schoolMap}
+              subjectMap={referenceData.subjectMap}
+              classroomMap={referenceData.classroomMap}
+            />
+          </section>
+        )
+      }
+      case 'students': {
+        const hasClassrooms = classroomsState.classrooms.length > 0
+        return (
+          <section className="grid gap-6">
+            <UserRegistrationCard
+              form={usersState.userForm}
+              onChange={(updates) => usersState.setUserForm((prev: UserFormState) => ({ ...prev, ...updates }))}
+              onSubmit={usersState.handleUserSubmit}
+              submitting={usersState.userFormSubmitting}
+              statusMessage={usersState.userFormStatus}
+              isAdmin={isAdmin}
+              isManager={isManager}
+              visibleSchools={referenceData.visibleSchools}
+              subjects={subjectsState.subjects}
+              classrooms={classroomsState.classrooms}
+              mode={usersState.userFormMode}
+              onCancelEdit={usersState.resetUserForm}
+              allowedRoles={['aluno']}
+              disabled={!hasClassrooms}
+              disabledReason={
+                hasClassrooms
+                  ? null
+                  : 'Não é possível cadastrar alunos sem antes criar uma Turma em "Estrutura Escolar → Turmas".'
+              }
+            />
+            <UsersTableCard
+              users={usersState.filteredUsers}
+              loading={usersState.usersLoading}
+              error={usersState.usersError}
+              roleFilter={usersState.roleFilter}
+              onChangeRoleFilter={handleRoleFilterChange}
+              onDeleteUser={usersState.handleDeleteUser}
+              onEditUser={usersState.startEditUser}
+              userActionStatus={usersState.userActionStatus}
+              sessionUserId={session?.id}
+              schoolMap={referenceData.schoolMap}
+              subjectMap={referenceData.subjectMap}
+              classroomMap={referenceData.classroomMap}
+            />
+          </section>
+        )
+      }
+      case 'managers': {
+        if (!isAdmin) return null
+        return (
+          <section className="grid gap-6">
+            <UserRegistrationCard
+              form={usersState.userForm}
+              onChange={(updates) => usersState.setUserForm((prev: UserFormState) => ({ ...prev, ...updates }))}
+              onSubmit={usersState.handleUserSubmit}
+              submitting={usersState.userFormSubmitting}
+              statusMessage={usersState.userFormStatus}
+              isAdmin={isAdmin}
+              isManager={isManager}
+              visibleSchools={referenceData.visibleSchools}
+              subjects={subjectsState.subjects}
+              classrooms={classroomsState.classrooms}
+              mode={usersState.userFormMode}
+              onCancelEdit={usersState.resetUserForm}
+              allowedRoles={['gestor']}
+            />
+            <UsersTableCard
+              users={usersState.filteredUsers}
+              loading={usersState.usersLoading}
+              error={usersState.usersError}
+              roleFilter={usersState.roleFilter}
+              onChangeRoleFilter={handleRoleFilterChange}
+              onDeleteUser={usersState.handleDeleteUser}
+              onEditUser={usersState.startEditUser}
+              userActionStatus={usersState.userActionStatus}
+              sessionUserId={session?.id}
+              schoolMap={referenceData.schoolMap}
+              subjectMap={referenceData.subjectMap}
+              classroomMap={referenceData.classroomMap}
+            />
+          </section>
+        )
+      }
       case 'schools':
         return (
           <SchoolsCatalogCard
@@ -223,8 +557,6 @@ export default function Gestor() {
             onReset={subjectsState.resetSubjectForm}
             visibleSchools={referenceData.visibleSchools}
             schoolMap={referenceData.schoolMap}
-            teacherOptions={subjectsState.teachersForSelectedSchool}
-            teacherDirectory={referenceData.availableTeachers}
           />
         )
       case 'classrooms':
@@ -243,9 +575,18 @@ export default function Gestor() {
             onDelete={classroomsState.handleDeleteClassroom}
             onReset={classroomsState.resetClassroomForm}
             visibleSchools={referenceData.visibleSchools}
-            subjects={referenceData.subjectsBySchool}
+            subjects={subjectsState.subjects}
             subjectMap={referenceData.subjectMap}
             schoolMap={referenceData.schoolMap}
+          />
+        )
+      case 'assignments':
+        return (
+          <ClassroomAssignmentsPanel
+            classrooms={classroomsState.classrooms}
+            subjects={subjectsState.subjects}
+            teachers={professorDirectory}
+            subjectMap={referenceData.subjectMap}
           />
         )
       default:
@@ -269,17 +610,14 @@ export default function Gestor() {
         />
         {renderSection()}
       </main>
+      {selectedProfile && (
+        <UserProfileDrawer
+          profile={selectedProfile}
+          onClose={handleCloseProfile}
+          sentFeedbacks={selectedProfileSent}
+          receivedFeedbacks={selectedProfileReceived}
+        />
+      )}
     </div>
   )
 }
-  const handleDeleteSingleFeedback = async (feedbackId: number) => {
-    if (!window.confirm('Deseja remover este feedback?')) return
-    setFeedbackActionStatus('Removendo feedback...')
-    try {
-      await deleteFeedback(feedbackId)
-      setFeedbackActionStatus('Feedback removido com sucesso.')
-      await loadFeedbacks()
-    } catch (error: any) {
-      setFeedbackActionStatus(error?.message || 'Não foi possível remover o feedback.')
-    }
-  }

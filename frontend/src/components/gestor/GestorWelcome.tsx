@@ -6,23 +6,38 @@ type GestorWelcomeProps<T extends string> = {
 
 export function GestorWelcome<T extends string>({ roleLabel, onNavigate, actions }: GestorWelcomeProps<T>) {
   return (
-    <section className="card p-6 space-y-4">
-      <div>
-        <p className="text-sm font-medium uppercase tracking-wide text-slate-500">Painel</p>
-        <h3 className="text-2xl font-semibold text-slate-900">Bem-vindo, {roleLabel}!</h3>
-        <p className="text-sm text-slate-600">Escolha abaixo o fluxo que deseja gerenciar agora.</p>
+    <section className="rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 text-white shadow-xl space-y-5">
+      <div className="flex flex-col gap-2">
+        <p className="text-xs uppercase tracking-[0.2em] text-slate-300">Centro de comando</p>
+        <h3 className="text-3xl font-semibold">Olá, {roleLabel}</h3>
+        <p className="text-sm text-slate-200 max-w-2xl">
+          Acompanhe rapidamente o clima da rede e escolha seu próximo foco. Tudo o que você precisa para
+          agir está a um clique.
+        </p>
       </div>
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2">
         {actions.map((action) => (
           <button
             key={action.id as string}
-            className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:-translate-y-1 hover:border-slate-300 hover:shadow"
+            className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-left backdrop-blur transition hover:-translate-y-1 hover:border-white/30"
             onClick={() => onNavigate(action.id)}
           >
-            <span className="text-2xl">{action.icon}</span>
-            <p className="text-base font-semibold text-slate-900">{action.title}</p>
-            <p className="text-sm text-slate-600">{action.description}</p>
+            <span className="text-3xl drop-shadow">{action.icon}</span>
+            <p className="text-lg font-semibold text-white">{action.title}</p>
+            <p className="text-sm text-slate-200">{action.description}</p>
           </button>
+        ))}
+      </div>
+      <div className="grid gap-3 sm:grid-cols-3">
+        {[
+          { label: 'Feedbacks monitorados', hint: 'Alertas sensíveis e confidenciais.' },
+          { label: 'Diretório ativo', hint: 'Usuários prontos para se comunicar.' },
+          { label: 'Insights com IA', hint: 'Resumos estratégicos em segundos.' },
+        ].map((item) => (
+          <div key={item.label} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <p className="text-xs uppercase tracking-wide text-slate-200">{item.label}</p>
+            <p className="text-sm text-slate-100">{item.hint}</p>
+          </div>
         ))}
       </div>
     </section>

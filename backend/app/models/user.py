@@ -6,15 +6,16 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 import uuid
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, func
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import DateTime, ForeignKey, Integer, String, func, and_
+from sqlalchemy.orm import Mapped, mapped_column, relationship, foreign
 
 from ..core.database import Base
-from .organization import teacher_classrooms_table
+from .organization import teacher_subjects_table
 
 if TYPE_CHECKING:
     from .feedback import Feedback
     from .organization import Classroom, School, Subject
+    from .assignment import TeacherAssignment
 
 
 class User(Base):
@@ -37,9 +38,6 @@ class User(Base):
     classroom_id: Mapped[int | None] = mapped_column(
         ForeignKey("classrooms.id"), nullable=True
     )
-    subject_id: Mapped[int | None] = mapped_column(
-        ForeignKey("subjects.id"), nullable=True
-    )
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(
@@ -52,35 +50,35 @@ class User(Base):
     # Relationships
     school: Mapped["School | None"] = relationship("School", back_populates="members")
     classroom: Mapped["Classroom | None"] = relationship("Classroom", back_populates="members")
-    subject: Mapped["Subject | None"] = relationship(
+    teachable_subjects: Mapped[list["Subject"]] = relationship(
         "Subject",
-        back_populates="teachers",
-        foreign_keys=[subject_id],
+        secondary=teacher_subjects_table,
+        back_populates="eligible_teachers",
     )
-    subjects_led: Mapped[list["Subject"]] = relationship(
-        "Subject",
+    assignments: Mapped[list["TeacherAssignment"]] = relationship(
+        "TeacherAssignment",
         back_populates="teacher",
-        foreign_keys="Subject.teacher_id",
-    )
-    teaching_classrooms: Mapped[list["Classroom"]] = relationship(
-        "Classroom",
-        secondary=teacher_classrooms_table,
-        back_populates="teachers",
+        cascade="all, delete-orphan",
     )
     feedbacks_sent: Mapped[list["Feedback"]] = relationship(
         "Feedback",
         back_populates="sender",
         foreign_keys="Feedback.sender_id",
+        passive_deletes=True,
     )
     feedbacks_received: Mapped[list["Feedback"]] = relationship(
         "Feedback",
-        back_populates="target",
-        foreign_keys="Feedback.target_id",
+        primaryjoin="and_(User.id == foreign(Feedback.target_id), Feedback.target_type == 'user')",
+        viewonly=True,
     )
 
     @property
-    def teaching_classroom_ids(self) -> list[int]:
-        return [classroom.id for classroom in self.teaching_classrooms]
+    def teachable_subject_ids(self) -> list[int]:
+        return [subject.id for subject in self.teachable_subjects]
+
+    @property
+    def assigned_classroom_ids(self) -> list[int]:
+        return [assignment.classroom_id for assignment in self.assignments]
 
     def __repr__(self) -> str:
         return f"<User(id={self.id}, email={self.email}, role={self.role})>"

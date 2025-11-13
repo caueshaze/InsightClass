@@ -134,7 +134,7 @@ models/gemma-2b-it
 
 ### 4. Rodar a API
 ```bash
-uvicorn src/api/serve:app --host 0.0.0.0 --port 8000 --reload
+uvicorn backend.app.main:app --reload
 ```
 A API estará disponível em: [http://localhost:8000/docs](http://localhost:8000/docs)
 
