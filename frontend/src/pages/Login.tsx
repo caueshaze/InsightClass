@@ -30,10 +30,16 @@ export default function Login() {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
+    const normalizedEmail = formData.username.trim().toLowerCase()
+    const normalizedPassword = formData.password.trim()
+    if (!normalizedEmail || !normalizedPassword) {
+      setStatusMessage('Informe e-mail e senha válidos.')
+      return
+    }
     setIsLoading(true)
     setStatusMessage('Autenticando...')
     try {
-      const resolvedRole = await login(formData.username, formData.password)
+      const resolvedRole = await login(normalizedEmail, normalizedPassword)
       navigate(redirectMap[resolvedRole] ?? '/')
       setStatusMessage('')
     } catch (error: any) {

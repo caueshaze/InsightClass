@@ -1,28 +1,38 @@
-"""Lightweight placeholders for cryptographic helpers.
+"""Symmetric encryption helpers for feedback payloads."""
 
-These functions intentionally perform reversible, non-secure transformations so
-the rest of the application can be wired. They MUST be replaced by AES-GCM or
-similar strong primitives before production rollout.
-"""
+from __future__ import annotations
 
+import os
 from base64 import b64decode, b64encode
-import secrets
 from typing import Tuple
+
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+from .config import get_settings
+
+
+def _cipher() -> AESGCM:
+    settings = get_settings()
+    return AESGCM(settings.encryption_key_bytes())
 
 
 def encrypt_feedback(text: str) -> Tuple[str, str]:
-    """Serialize feedback text for storage (placeholder)."""
-    # TODO: Replace base64 encoding with proper AES-GCM encryption.
-    nonce = secrets.token_hex(12)
-    cipher_text = b64encode(text.encode("utf-8")).decode("utf-8")
-    return cipher_text, nonce
+    """Encrypt feedback content using AES-GCM and return (cipher, nonce)."""
+    cipher = _cipher()
+    nonce_bytes = os.urandom(12)
+    ciphertext = cipher.encrypt(nonce_bytes, text.encode("utf-8"), None)
+    return b64encode(ciphertext).decode("utf-8"), b64encode(nonce_bytes).decode("utf-8")
 
 
 def decrypt_feedback(cipher_text: str, nonce: str) -> str:
-    """Restore original feedback text (placeholder)."""
-    # TODO: Validate nonce and decrypt using the real key material.
-    try:
-        return b64decode(cipher_text.encode("utf-8")).decode("utf-8")
-    except Exception:  # pragma: no cover - placeholder
+    """Decrypt AES-GCM payloads. Returns empty string on failure."""
+    if not cipher_text or not nonce:
         return ""
-
+    try:
+        cipher = _cipher()
+        nonce_bytes = b64decode(nonce.encode("utf-8"))
+        data = b64decode(cipher_text.encode("utf-8"))
+        plaintext = cipher.decrypt(nonce_bytes, data, None)
+        return plaintext.decode("utf-8")
+    except Exception:  # pragma: no cover - defensive
+        return ""

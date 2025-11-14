@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import logging
 import math
+import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional, Tuple, TYPE_CHECKING, Any, Dict
 
 import numpy as np  # type: ignore
+import httpx  # NEW: cliente HTTP para chamar o servidor ONNX remoto
 
 from .config import Settings, get_settings
 
@@ -19,6 +21,10 @@ PORTUGUESE_LABELS = {
     "positive": "positivo",
 }
 DEFAULT_SENTIMENT: Tuple[str, float] = ("neutro", 0.0)
+
+# ===== CONFIG REMOTA =====
+REMOTE_SENTIMENT_URL = os.getenv("SENTIMENT_API_URL", "").strip()
+REMOTE_SENTIMENT_KEY = os.getenv("SENTIMENT_API_KEY", "").strip()
 
 try:
     import onnxruntime as ort  # type: ignore
@@ -37,6 +43,11 @@ else:
 
 
 class SentimentAnalyzer:
+    """
+    Versão original: carrega modelo ONNX local.
+    Continua existindo como fallback (desenvolvimento/local ou erro no remoto).
+    """
+
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
         self._session: Optional[InferenceSession] = None
@@ -206,7 +217,8 @@ class SentimentAnalyzer:
             raw_label = SENTIMENT_LABELS[min(max_index, len(SENTIMENT_LABELS) - 1)]
             label = PORTUGUESE_LABELS.get(raw_label, "neutro")
             return label, float(probs[max_index])
-        except Exception:
+        except Exception as exc:
+            LOGGER.info("Erro durante inferência ONNX local (%s). Caindo para heurística.", exc)
             return _heuristic_sentiment(text)
 
 
@@ -251,9 +263,9 @@ def _heuristic_sentiment(text: str) -> Tuple[str, float]:
     if pos_hits == 0 and neg_hits == 0:
         return DEFAULT_SENTIMENT
     if pos_hits > neg_hits:
-        score = min(1.0, 0.6 + 0.1 * pos_hits)
+        score = min(1.0, 1.0 if pos_hits >= 4 else 0.6 + 0.1 * pos_hits)
         return "positivo", score
-    score = min(1.0, 0.6 + 0.1 * neg_hits)
+    score = min(1.0, 1.0 if neg_hits >= 4 else 0.6 + 0.1 * neg_hits)
     return "negativo", score
 
 
@@ -262,5 +274,57 @@ def get_sentiment_analyzer() -> SentimentAnalyzer:
     return SentimentAnalyzer(get_settings())
 
 
+def _remote_sentiment(text: str) -> Tuple[Optional[str], Optional[float]]:
+    """
+    Se SENTIMENT_API_URL estiver configurada (via Settings/Pydantic),
+    tenta usar o servidor remoto (VM ONNX).
+    Em caso de erro, cai para o modelo local ou heur�stica.
+    """
+    settings = get_settings()
+    url = settings.sentiment_api_url.strip()
+    key = settings.sentiment_api_key.strip()
+
+    if not url:
+        # Sem URL remota \u2192 volta para o comportamento antigo (local/heur�stica)
+        return get_sentiment_analyzer().predict(text)
+
+    try:
+        LOGGER.info("Chamando servidor remoto de sentimento em %s", url)
+
+        resp = httpx.post(
+            url,
+            json={"text": text},
+            headers={"X-API-Key": key} if key else {},
+            timeout=5.0,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        raw_label = str(data.get("label", "")).lower()
+        score_raw = data.get("score")
+
+        if score_raw is None or not raw_label:
+            LOGGER.info("Resposta remota de sentimento incompleta. Caindo para local/heur�stica.")
+            return get_sentiment_analyzer().predict(text)
+
+        label_pt = PORTUGUESE_LABELS.get(raw_label, raw_label)
+        try:
+            score = float(score_raw)
+        except (TypeError, ValueError):
+            score = 0.0
+
+        return label_pt, score
+    except Exception as exc:
+        LOGGER.info(
+            "Falha ao chamar servidor remoto de sentimento (%s). Caindo para local/heur�stica.",
+            exc,
+        )
+        return get_sentiment_analyzer().predict(text)
+
 def analyze_sentiment(text: str) -> Tuple[Optional[str], Optional[float]]:
-    return get_sentiment_analyzer().predict(text)
+    """
+    Função pública usada pelo resto do código.
+    Agora:
+      - se SENTIMENT_API_URL estiver setada → usa IA remota
+      - senão → usa IA local (ONNX) + heurística como antes
+    """
+    return _remote_sentiment(text)

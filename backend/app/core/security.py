@@ -49,8 +49,15 @@ def create_access_token(
 ) -> str:
     """Create a signed JWT containing the subject (user id) and role."""
     expire_delta = expires_delta or timedelta(minutes=settings.access_token_expire_minutes)
-    expire = datetime.now(timezone.utc) + expire_delta
-    to_encode: Dict[str, Any] = {"sub": subject, "role": role, "exp": expire}
+    issued_at = datetime.now(timezone.utc)
+    expire = issued_at + expire_delta
+    to_encode: Dict[str, Any] = {
+        "sub": subject,
+        "role": role,
+        "iat": int(issued_at.timestamp()),
+        "exp": int(expire.timestamp()),
+        "iss": settings.jwt_issuer,
+    }
     if extra_claims:
         to_encode.update(extra_claims)
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.jwt_algorithm)
@@ -59,7 +66,13 @@ def create_access_token(
 def decode_access_token(*, token: str, settings: Settings) -> Dict[str, Any]:
     """Decode and validate a JWT, raising AuthenticationError on failure."""
     try:
-        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_algorithm])
+        payload = jwt.decode(
+            token,
+            settings.secret_key,
+            algorithms=[settings.jwt_algorithm],
+            issuer=settings.jwt_issuer,
+            options={"require": ["exp", "iat", "iss"]},
+        )
     except JWTError as exc:  # pragma: no cover - thin wrapper
         raise AuthenticationError("Token inválido") from exc
     return payload

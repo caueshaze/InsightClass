@@ -1,5 +1,5 @@
 import { API_BASE_URL } from './config'
-import { clearToken, getToken } from './auth'
+import { clearToken, ensureValidAccessToken, refreshAccessToken } from './auth'
 import type {
   AdminRole,
   AdminUserCreateInput,
@@ -27,15 +27,16 @@ export type ApiError = Error & { status?: number }
 
 const BASE_URL = API_BASE_URL.replace(/\/$/, '')
 
-async function authFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = getToken()
-  if (!token) {
+async function authFetch<T>(path: string, options: RequestInit = {}, retryOn401 = true): Promise<T> {
+  const initialToken = await ensureValidAccessToken()
+  if (!initialToken) {
+    clearToken()
     throw new Error('Sessão expirada. Faça login novamente.')
   }
 
   const headers = new Headers(options.headers || {})
   if (!headers.has('Authorization')) {
-    headers.set('Authorization', `Bearer ${token}`)
+    headers.set('Authorization', `Bearer ${initialToken}`)
   }
   if (options.body && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json')
@@ -47,6 +48,13 @@ async function authFetch<T>(path: string, options: RequestInit = {}): Promise<T>
   })
 
   if (response.status === 401) {
+    if (retryOn401) {
+      const refreshed = await refreshAccessToken()
+      if (refreshed) {
+        headers.set('Authorization', `Bearer ${refreshed}`)
+        return authFetch(path, { ...options, headers }, false)
+      }
+    }
     clearToken()
     throw new Error('Sessão expirada. Faça login novamente.')
   }

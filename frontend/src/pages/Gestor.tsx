@@ -108,6 +108,7 @@ export default function Gestor() {
   const resolvedAlerts = useTriggerAlerts({
     ...(isAdmin ? {} : { schoolId: managerSchoolId ?? undefined }),
     includeResolved: true,
+    onlyResolved: true,
     emptyMessage: 'Nenhum alerta resolvido até o momento.',
   })
   const triggerKeywords = useTriggerKeywords({
@@ -307,29 +308,30 @@ export default function Gestor() {
       case 'alerts':
         return (
           <section className="space-y-6">
-            <div className="rounded-3xl border border-rose-200 bg-gradient-to-r from-rose-50 via-white to-rose-50 shadow-inner p-6">
-              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                <div>
+            <div className="card p-6 space-y-6">
+              <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                <div className="space-y-2">
                   <p className="text-sm font-semibold text-rose-700 flex items-center gap-2">
-                    <span>🛡️</span>
-                    Centro de Segurança
+                    <span>🛡️</span> Centro de Segurança
                   </p>
                   <h2 className="text-2xl font-bold text-slate-900">
                     Monitoramento proativo de gatilhos sensíveis
                   </h2>
                   <p className="text-sm text-slate-600 max-w-2xl">
-                    Acompanhe as ocorrências classificadas como risco e mantenha a lista de palavras
-                    monitoradas atualizada para atuar rapidamente em situações críticas.
+                    Acompanhe ocorências críticas, mantenha a lista de palavras-chave atualizada e
+                    concentre esforços nos riscos identificados pela comunidade escolar.
                   </p>
                 </div>
-                <div className="text-right">
+                <div className="grid gap-3 text-right">
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-slate-500">Ativos</p>
+                    <p className="text-xs uppercase tracking-wide text-slate-500">Alertas ativos</p>
                     <p className="text-3xl font-bold text-rose-600">{triggerAlerts.alerts.length}</p>
+                    <p className="text-[11px] text-slate-500">em análise</p>
                   </div>
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-slate-500 mt-2">Resolvidos</p>
+                    <p className="text-xs uppercase tracking-wide text-slate-500">Alertas resolvidos</p>
                     <p className="text-3xl font-bold text-emerald-600">{resolvedAlerts.alerts.length}</p>
+                    <p className="text-[11px] text-slate-500">marcados manualmente</p>
                   </div>
                 </div>
               </div>

@@ -3,7 +3,7 @@ import { ReactNode, useEffect, useMemo } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 
 import { useAuth, Role } from '../context/AuthContext'
-import { getToken } from '../lib/auth'
+import { hasToken } from '../lib/auth'
 
 type BackendRole = 'admin' | 'gestor' | 'professor' | 'aluno'
 type AllowedRole = Role | BackendRole
@@ -24,7 +24,7 @@ type ProtectedProps = {
 export function Protected({ children, roles, allow }: ProtectedProps) {
   const { session, loading, refresh } = useAuth()
   const location = useLocation()
-  const token = getToken()
+  const tokenAvailable = hasToken()
 
   const normalizedRoles = useMemo(() => {
     const source = roles ?? allow ?? []
@@ -40,12 +40,12 @@ export function Protected({ children, roles, allow }: ProtectedProps) {
   }, [roles, allow])
 
   useEffect(() => {
-    if (token && !session && !loading) {
+    if (tokenAvailable && !session && !loading) {
       void refresh()
     }
-  }, [token, session, loading, refresh])
+  }, [tokenAvailable, session, loading, refresh])
 
-  if (!token) {
+  if (!tokenAvailable) {
     return <Navigate to="/login" state={{ from: location }} replace />
   }
 

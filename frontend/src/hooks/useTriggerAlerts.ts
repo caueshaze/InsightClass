@@ -6,6 +6,7 @@ import type { FeedbackPublic } from '../lib/types'
 type UseTriggerAlertsOptions = {
   schoolId?: number | null
   includeResolved?: boolean
+  onlyResolved?: boolean
   emptyMessage?: string
 }
 
@@ -31,17 +32,23 @@ export function useTriggerAlerts(options: UseTriggerAlertsOptions = {}) {
     setLoading(true)
     setNotice(null)
     try {
+      const shouldIncludeResolved = Boolean(
+        options.includeResolved || options.onlyResolved,
+      )
       const data = await fetchTriggerAlerts(
         {
           ...(options.schoolId ? { school_id: options.schoolId } : {}),
-          ...(options.includeResolved ? { include_resolved: true } : {}),
+          ...(shouldIncludeResolved ? { include_resolved: true } : {}),
         },
       )
-      setAlerts(data)
+      const filtered = options.onlyResolved
+        ? data.filter((item) => Boolean(item.trigger_resolved_at))
+        : data
+      setAlerts(filtered)
       if (data.length === 0) {
         setNotice(
           options.emptyMessage ||
-            (options.includeResolved
+            (options.onlyResolved
               ? 'Nenhum alerta resolvido até o momento.'
               : 'Nenhum alerta está ativo no momento.'),
         )

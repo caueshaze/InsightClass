@@ -1,5 +1,8 @@
 """SQLAlchemy session and metadata helpers."""
 
+from __future__ import annotations
+
+import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Optional
@@ -14,6 +17,7 @@ Base = declarative_base()
 
 _engine: Optional[Engine] = None
 SessionLocal: sessionmaker[Session] | None = None
+LOGGER = logging.getLogger(__name__)
 
 
 @event.listens_for(Engine, "connect")
@@ -30,14 +34,21 @@ def _enforce_sqlite_foreign_keys(dbapi_connection, connection_record) -> None:  
 def _build_engine(settings: Optional[Settings] = None) -> Engine:
     """Instantiate an Engine honoring the configured database URL."""
     resolved_settings = settings or get_settings()
+    database_url = resolved_settings.normalized_database_url()
+    if database_url.startswith("sqlite") and resolved_settings.is_production:
+        raise RuntimeError(
+            "SQLite não é permitido em produção. Defina DATABASE_URL para um banco PostgreSQL."
+        )
     connect_args = {}
-    if resolved_settings.database_url.startswith("sqlite"):
+    if database_url.startswith("sqlite"):
         connect_args["check_same_thread"] = False
+        LOGGER.warning("Usando SQLite apenas para desenvolvimento e testes.")
     return create_engine(
-        resolved_settings.database_url,
-        echo=False,
+        database_url,
+        echo=resolved_settings.debug,
         future=True,
         connect_args=connect_args,
+        pool_pre_ping=True,
     )
 
 

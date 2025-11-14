@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ....core.config import get_settings
@@ -106,7 +106,7 @@ def get_admin_metrics_health(
 
     start_total = datetime.utcnow()
     start_db = datetime.utcnow()
-    db.execute(text("SELECT 1"))
+    db.execute(select(1))
     db_latency_ms = (datetime.utcnow() - start_db).total_seconds() * 1000
     api_latency_ms = (datetime.utcnow() - start_total).total_seconds() * 1000
 

@@ -87,6 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return nextSession
     } catch (error) {
       console.error('Erro ao validar sessão', error)
+      clearToken()
       setSession(null)
       return null
     }
@@ -101,7 +102,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(
     async (email: string, password: string) => {
-      if (!email || !password) {
+      const normalizedEmail = email.trim().toLowerCase()
+      const normalizedPassword = password.trim()
+      if (!normalizedEmail || !normalizedPassword) {
         throw new Error('Informe usuário e senha para continuar.')
       }
 
@@ -111,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ email, password }),
+          body: JSON.stringify({ email: normalizedEmail, password: normalizedPassword }),
         })
 
         if (!response.ok) {
